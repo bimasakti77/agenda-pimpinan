@@ -105,6 +105,22 @@ temp/
 *.sh
 postman_collection.json
 
+# Debug and test files
+debug_user_role.html
+test_api.html
+TEST_USER_MENU_ACCESS.md
+
+# Documentation files
+**/README.md
+**/UNDUH_ASET_KEMENKUM.md
+
+# Default Next.js SVG files
+frontend/public/file.svg
+frontend/public/globe.svg
+frontend/public/next.svg
+frontend/public/vercel.svg
+frontend/public/window.svg
+
 # Database files
 *.db
 *.sqlite
