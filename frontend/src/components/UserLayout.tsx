@@ -55,7 +55,7 @@ export default function UserLayout({ children, title = "User Management", descri
     if (view === "dashboard") {
       window.location.href = "/dashboard";
     } else if (view === "calendar") {
-      window.location.href = "/dashboard?view=calendar";
+      window.location.href = "/calendar";
     } else if (view === "users") {
       // Stay in users page
       setCurrentView("users");
@@ -115,7 +115,7 @@ export default function UserLayout({ children, title = "User Management", descri
       />
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 ml-64 flex flex-col">
         {/* Top Header */}
         <header className="bg-white shadow-sm border-b">
           <div className="px-6 py-4">

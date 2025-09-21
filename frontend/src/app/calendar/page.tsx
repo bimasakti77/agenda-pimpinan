@@ -1,0 +1,257 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { getStoredUser, getStoredToken, type User } from "@/lib/auth";
+import { useTokenManager } from "@/hooks/useTokenManager";
+import CalendarView from "@/components/CalendarView";
+import UserFilter from "@/components/UserFilter";
+import Sidebar from "@/components/Sidebar";
+import ProfileDropdown from "@/components/ProfileDropdown";
+import { Calendar } from "lucide-react";
+
+interface Agenda {
+  id: number;
+  title: string;
+  description: string;
+  date: string;
+  start_time: string;
+  end_time: string;
+  location: string;
+  status: string;
+  priority: string;
+  created_by_name: string;
+  attendees: string[];
+}
+
+export default function CalendarPage() {
+  const [agendas, setAgendas] = useState<Agenda[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [selectedUserName, setSelectedUserName] = useState<string>('');
+  const [showUserFilter, setShowUserFilter] = useState(true);
+  const [hasSelectedUser, setHasSelectedUser] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [currentView, setCurrentView] = useState("calendar");
+
+  const { isAuthenticated, isLoading: tokenLoading } = useTokenManager();
+
+  useEffect(() => {
+    const token = getStoredToken();
+    const user = getStoredUser();
+
+    if (!token || !user) {
+      window.location.href = "/login";
+      return;
+    }
+
+    setUser(user);
+
+    if (user.role !== 'superadmin') {
+      loadAgendas();
+      setHasSelectedUser(true);
+      setShowUserFilter(false);
+    } else {
+      setIsLoading(false);
+      setShowUserFilter(true);
+      setHasSelectedUser(false);
+    }
+  }, []);
+
+  const loadAgendas = async (userId: number | null = null) => {
+    setIsLoading(true);
+    setError("");
+    try {
+      const token = getStoredToken();
+      if (!token) {
+        setError("Token tidak ditemukan.");
+        return;
+      }
+
+      let url = `http://localhost:3000/api/agenda?limit=100`;
+      if (userId) {
+        url += `&created_by=${userId}`;
+      } else if (user?.role !== 'superadmin') {
+        url += `&created_by=${user?.id}`;
+      }
+
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 401) {
+        setError("Sesi berakhir. Silakan login kembali.");
+        if (typeof window !== 'undefined') {
+          window.location.href = "/login";
+        }
+        return;
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Gagal memuat agenda.");
+      }
+
+      const result = await response.json();
+      setAgendas(result.data.agenda);
+    } catch (err: any) {
+      setError(err.message || "Terjadi kesalahan saat memuat agenda.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUserSelect = async (userId: number | null, userName: string) => {
+    setIsTransitioning(true);
+
+    await new Promise(resolve => setTimeout(resolve, 200));
+
+    setSelectedUserId(userId);
+    setSelectedUserName(userName);
+    setHasSelectedUser(true);
+    setIsLoading(true);
+
+    await loadAgendas(userId);
+
+    setIsTransitioning(false);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("user");
+    window.location.href = "/login";
+  };
+
+  const handleViewChange = (view: string) => {
+    setCurrentView(view);
+
+    if (view === "dashboard") {
+      window.location.href = "/dashboard";
+    } else if (view === "calendar") {
+      // Already on calendar page, do nothing
+    } else if (view === "users") {
+      window.location.href = "/users";
+    }
+  };
+
+  if (tokenLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Memuat aplikasi...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated || !user) {
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <div className="flex">
+        <Sidebar
+          user={user}
+          onLogout={handleLogout}
+          currentView={currentView}
+          onViewChange={handleViewChange}
+        />
+        <div className="flex-1 ml-64 flex flex-col">
+          {/* Top Header */}
+          <header className="bg-white shadow-sm border-b">
+            <div className="px-6 py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-lg">
+                    <Calendar className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h1 className="text-2xl font-bold text-gray-900">
+                      Kalender Agenda
+                    </h1>
+                    <p className="text-gray-600 mt-1">
+                      Lihat dan kelola agenda dalam kalender
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  {/* Profile Dropdown */}
+                  {user && (
+                    <ProfileDropdown
+                      user={user as any}
+                      onLogout={handleLogout}
+                    />
+                  )}
+                </div>
+              </div>
+            </div>
+          </header>
+
+          {/* Main Content Area */}
+          <main className="flex-1 p-6">
+            <div className="space-y-6">
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+                  {error}
+                </div>
+              )}
+
+              {/* User Filter - Only show for superadmin */}
+              {user?.role === 'superadmin' && showUserFilter && (
+                <UserFilter
+                  onUserSelect={handleUserSelect}
+                  selectedUserId={selectedUserId}
+                />
+              )}
+
+              {/* Show message for superadmin who hasn't selected a user yet */}
+              {user?.role === 'superadmin' && !hasSelectedUser && (
+                <Card>
+                  <CardContent className="text-center py-12">
+                    <div className="text-gray-500">
+                      <div className="text-6xl mb-4">👑</div>
+                      <h3 className="text-xl font-semibold mb-2">Selamat Datang, Menteri!</h3>
+                      <p className="text-lg mb-4">Silakan pilih user di bawah untuk melihat agenda mereka</p>
+                      <p className="text-sm text-gray-400">
+                        Pilih salah satu user untuk melihat agenda yang telah dibuat
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Loading Overlay */}
+              {isTransitioning && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                  <div className="bg-white rounded-lg p-6 flex items-center space-x-3">
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                    <span className="text-gray-700">Memuat agenda...</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Show calendar only if user has made selection or is not superadmin */}
+              {hasSelectedUser && (
+                <div className={`transition-all duration-300 ${isTransitioning ? 'opacity-50' : 'opacity-100'}`}>
+                  <CalendarView
+                    agendas={agendas || []}
+                    isLoading={isLoading}
+                    selectedUserName={selectedUserName}
+                  />
+                </div>
+              )}
+            </div>
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+}

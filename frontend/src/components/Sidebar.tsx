@@ -43,7 +43,7 @@ export default function Sidebar({ user, onLogout, currentView, onViewChange }: S
   ].filter(item => !user || item.roles.includes(user.role));
 
   return (
-    <div className={`bg-gray-900 text-white transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} min-h-screen flex flex-col`}>
+    <div className={`bg-gray-900 text-white transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} min-h-screen flex flex-col fixed left-0 top-0 z-40`}>
       {/* Header */}
       <div className="p-4 border-b border-gray-700">
         <div className="flex items-center justify-between">
@@ -66,7 +66,12 @@ export default function Sidebar({ user, onLogout, currentView, onViewChange }: S
               
               {/* Agenda Pimpinan - Kanan */}
               <div className="text-center">
-                <h1 className="text-xl font-bold text-white tracking-wide drop-shadow-lg" style={{textShadow: '0 0 10px rgba(255, 255, 255, 0.5), 0 0 20px rgba(255, 255, 255, 0.3), 0 0 30px rgba(255, 255, 255, 0.2)'}}>
+                <h1 
+                  className="text-xl font-bold text-white tracking-wide drop-shadow-lg cursor-pointer hover:text-blue-300 transition-colors duration-200" 
+                  style={{textShadow: '0 0 10px rgba(255, 255, 255, 0.5), 0 0 20px rgba(255, 255, 255, 0.3), 0 0 30px rgba(255, 255, 255, 0.2)'}}
+                  onClick={() => window.location.href = '/'}
+                  title="Klik untuk kembali ke Dashboard"
+                >
                   Agenda Pimpinan
                 </h1>
               </div>
@@ -75,7 +80,12 @@ export default function Sidebar({ user, onLogout, currentView, onViewChange }: S
           {isCollapsed && (
             <div className="flex flex-col items-center justify-center w-full space-y-2">
               <div className="text-center">
-                <h1 className="text-lg font-bold text-white drop-shadow-lg" style={{textShadow: '0 0 8px rgba(255, 255, 255, 0.5), 0 0 16px rgba(255, 255, 255, 0.3), 0 0 24px rgba(255, 255, 255, 0.2)'}}>
+                <h1 
+                  className="text-lg font-bold text-white drop-shadow-lg cursor-pointer hover:text-blue-300 transition-colors duration-200" 
+                  style={{textShadow: '0 0 8px rgba(255, 255, 255, 0.5), 0 0 16px rgba(255, 255, 255, 0.3), 0 0 24px rgba(255, 255, 255, 0.2)'}}
+                  onClick={() => window.location.href = '/'}
+                  title="Klik untuk kembali ke Dashboard"
+                >
                   AP
                 </h1>
               </div>
