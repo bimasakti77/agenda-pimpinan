@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import toast, { Toaster } from "react-hot-toast";
-import { getStoredUser, getStoredToken, clearAuthData, type User } from "@/lib/auth";
+import { getStoredUser, getStoredToken, getStoredRefreshToken, clearAuthData, isTokenExpired, refreshAccessToken, type User } from "@/lib/auth";
 import CalendarView from "@/components/CalendarView";
 import UserFilter from "@/components/UserFilter";
 import Sidebar from "@/components/Sidebar";
@@ -46,9 +46,18 @@ export default function DashboardPage() {
     pendingAgendas: 0
   });
   const [chartData, setChartData] = useState([]);
+  
+  // Memoize chart data to prevent unnecessary re-renders
+  const memoizedChartData = useMemo(() => {
+    return chartData || [];
+  }, [chartData]);
   const [recentAgendas, setRecentAgendas] = useState<Agenda[]>([]);
   const [selectedAgenda, setSelectedAgenda] = useState<Agenda | null>(null);
   const [showAgendaModal, setShowAgendaModal] = useState(false);
+  const [toastShown, setToastShown] = useState<{
+    accessTokenWarning: boolean;
+    refreshTokenWarning: boolean;
+  }>({ accessTokenWarning: false, refreshTokenWarning: false });
 
   useEffect(() => {
     const token = getStoredToken();
@@ -57,6 +66,17 @@ export default function DashboardPage() {
     if (!token || !user) {
       window.location.href = "/login";
       return;
+    }
+
+    // Check if token is expired and try to refresh
+    if (token && isTokenExpired(token)) {
+      refreshAccessToken().then((refreshSuccess) => {
+        if (!refreshSuccess) {
+          clearAuthData();
+          window.location.href = "/login";
+          return;
+        }
+      });
     }
 
     setUser(user);
@@ -77,6 +97,93 @@ export default function DashboardPage() {
       setHasSelectedUser(false); // Superadmin must select a user first
     }
   }, []);
+
+
+  // Check token expiry and handle redirects (separate from countdown display)
+  useEffect(() => {
+    const checkTokenExpiry = async () => {
+      const accessToken = getStoredToken();
+      const refreshToken = getStoredRefreshToken();
+      
+      if (!accessToken || !refreshToken) {
+        clearAuthData();
+        window.location.href = "/login";
+        return;
+      }
+
+      try {
+        // Check access token expiry
+        const accessPayload = JSON.parse(atob(accessToken.split('.')[1]));
+        const accessExp = accessPayload.exp * 1000;
+        const accessTimeLeft = Math.max(0, Math.floor((accessExp - Date.now()) / 1000));
+
+        // Check refresh token expiry
+        const refreshPayload = JSON.parse(atob(refreshToken.split('.')[1]));
+        const refreshExp = refreshPayload.exp * 1000;
+        const refreshTimeLeft = Math.max(0, Math.floor((refreshExp - Date.now()) / 1000));
+
+        console.log(`Token check - Access: ${accessTimeLeft}s, Refresh: ${refreshTimeLeft}s`);
+
+        // Auto refresh when access token expires
+        if (accessTimeLeft <= 0 && refreshTimeLeft > 0) {
+          console.log("Access token expired, attempting to refresh...");
+          const refreshSuccess = await refreshAccessToken();
+          if (refreshSuccess) {
+            console.log("Token refreshed successfully");
+            // Reset toast flags for new tokens
+            setToastShown({ accessTokenWarning: false, refreshTokenWarning: false });
+          } else {
+            console.log("Token refresh failed, redirecting to login");
+            clearAuthData();
+            window.location.href = "/login";
+          }
+          return;
+        }
+
+        // Show warnings only once
+        if (accessTimeLeft === 10 && !toastShown.accessTokenWarning) {
+          toast("⚠️ Access token akan expired dalam 10 detik!", {
+            duration: 3000,
+            style: {
+              background: '#f59e0b',
+              color: '#fff',
+            },
+          });
+          setToastShown(prev => ({ ...prev, accessTokenWarning: true }));
+        }
+        
+        if (refreshTimeLeft === 5 && !toastShown.refreshTokenWarning) {
+          toast.error("🚨 Refresh token akan expired dalam 5 detik! Aplikasi akan redirect ke login.", {
+            duration: 5000,
+          });
+          setToastShown(prev => ({ ...prev, refreshTokenWarning: true }));
+        }
+
+        // Redirect when refresh token expires
+        if (refreshTimeLeft <= 0) {
+          toast.error("⏰ Session expired! Redirecting to login...", {
+            duration: 2000,
+          });
+          setTimeout(() => {
+            clearAuthData();
+            window.location.href = "/login";
+          }, 2000);
+        }
+      } catch (error) {
+        console.error("Error checking token expiry:", error);
+        clearAuthData();
+        window.location.href = "/login";
+      }
+    };
+
+    // Check every 5 seconds instead of every second
+    const interval = setInterval(checkTokenExpiry, 5000);
+    
+    // Initial check
+    checkTokenExpiry();
+
+    return () => clearInterval(interval);
+  }, [toastShown]);
 
   const loadAgendas = async (userId?: number | null): Promise<void> => {
     try {
@@ -261,6 +368,7 @@ export default function DashboardPage() {
     setShowAgendaModal(true);
   };
 
+
   const handleLogout = () => {
     toast.success("Logout berhasil! Sampai jumpa!", {
       duration: 1500,
@@ -383,8 +491,8 @@ export default function DashboardPage() {
               pendingAgendas={stats.pendingAgendas}
             />
             
-            {/* Charts */}
-            <AgendaChart monthlyData={chartData.length > 0 ? chartData : []} />
+                {/* Charts */}
+                <AgendaChart monthlyData={memoizedChartData} />
             
             {/* Recent Agendas */}
             <Card>

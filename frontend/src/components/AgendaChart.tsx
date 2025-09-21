@@ -2,6 +2,8 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
+import { TrendingUp, BarChart3 } from "lucide-react";
+import { useMemo } from "react";
 
 interface AgendaChartProps {
   monthlyData: Array<{
@@ -12,9 +14,14 @@ interface AgendaChartProps {
 }
 
 export default function AgendaChart({ monthlyData }: AgendaChartProps) {
-  console.log("AgendaChart received data:", monthlyData);
+  // Memoize the data to prevent unnecessary re-renders
+  const memoizedData = useMemo(() => {
+    return monthlyData || [];
+  }, [monthlyData]);
+
+  console.log("AgendaChart received data:", memoizedData);
   
-  if (!monthlyData || monthlyData.length === 0) {
+  if (!memoizedData || memoizedData.length === 0) {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <Card>
@@ -76,7 +83,7 @@ export default function AgendaChart({ monthlyData }: AgendaChartProps) {
         <CardContent>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={monthlyData}>
+              <LineChart data={memoizedData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
                   dataKey="month" 
@@ -122,7 +129,7 @@ export default function AgendaChart({ monthlyData }: AgendaChartProps) {
         <CardContent>
           <div className="h-80">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyData}>
+              <BarChart data={memoizedData}>
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis 
                   dataKey="month" 
@@ -161,5 +168,3 @@ export default function AgendaChart({ monthlyData }: AgendaChartProps) {
   );
 }
 
-// Import icons
-import { TrendingUp, BarChart3 } from "lucide-react";

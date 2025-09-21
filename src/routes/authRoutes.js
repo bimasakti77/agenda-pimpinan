@@ -42,15 +42,15 @@ router.post('/login', validate(schemas.login), async (req, res, next) => {
 // @access  Public
 router.post('/refresh', async (req, res, next) => {
   try {
-    const { token } = req.body;
-    if (!token) {
+    const { refreshToken } = req.body;
+    if (!refreshToken) {
       return res.status(400).json({
         success: false,
-        message: 'Token is required'
+        message: 'Refresh token is required'
       });
     }
 
-    const result = await authService.refreshToken(token);
+    const result = await authService.refreshToken(refreshToken);
     res.json({
       success: true,
       message: 'Token refreshed successfully',

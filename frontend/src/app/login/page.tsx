@@ -39,8 +39,9 @@ export default function LoginPage() {
         });
         
         // Validate data before storing
-        if (data.data && data.data.token && data.data.user) {
-          localStorage.setItem("token", data.data.token);
+        if (data.data && data.data.accessToken && data.data.refreshToken && data.data.user) {
+          localStorage.setItem("accessToken", data.data.accessToken);
+          localStorage.setItem("refreshToken", data.data.refreshToken);
           localStorage.setItem("user", JSON.stringify(data.data.user));
           
           // Delay redirect untuk menampilkan notifikasi
@@ -86,7 +87,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="min-h-screen flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8" style={{ backgroundColor: '#000633' }}>
       <Toaster 
         position="top-right"
         toastOptions={{
@@ -98,7 +99,10 @@ export default function LoginPage() {
           },
         }}
       />
-      <Card className="w-full max-w-md">
+          <Card className="w-full max-w-md border-2 border-gray-200 animate-pulse" style={{ 
+            boxShadow: '0 0 20px rgba(59, 130, 246, 0.5), 0 0 40px rgba(59, 130, 246, 0.3), 0 0 60px rgba(59, 130, 246, 0.1)',
+            animation: 'shadowGlow 2s ease-in-out infinite alternate'
+          }}>
         <CardHeader className="space-y-1">
           <div className="flex justify-center mb-4">
             <img 

@@ -43,7 +43,7 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-:root {
+  :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.13 0.028 261.692);
@@ -118,5 +118,15 @@
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Custom animation for shadow glow effect */
+@keyframes shadowGlow {
+  0% {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3), 0 0 40px rgba(59, 130, 246, 0.2), 0 0 60px rgba(59, 130, 246, 0.1);
+  }
+  100% {
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.6), 0 0 60px rgba(59, 130, 246, 0.4), 0 0 90px rgba(59, 130, 246, 0.2);
   }
 }

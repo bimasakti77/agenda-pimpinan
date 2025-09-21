@@ -4,16 +4,19 @@ const User = require('../models/User');
 class AuthService {
   constructor() {
     this.jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
-    this.jwtExpiresIn = process.env.JWT_EXPIRES_IN || '24h';
+        this.jwtExpiresIn = process.env.JWT_EXPIRES_IN || '30s'; // Testing: 30 seconds access token
+        this.refreshTokenExpiresIn = process.env.REFRESH_TOKEN_EXPIRES_IN || '1m'; // Testing: 1 minute refresh token
+    this.refreshTokenSecret = process.env.REFRESH_TOKEN_SECRET || 'your-refresh-secret-key';
   }
 
-  // Generate JWT token
+  // Generate JWT access token
   generateToken(user) {
     const payload = {
       id: user.id,
       username: user.username,
       email: user.email,
-      role: user.role
+      role: user.role,
+      type: 'access'
     };
 
     return jwt.sign(payload, this.jwtSecret, {
@@ -21,12 +24,42 @@ class AuthService {
     });
   }
 
-  // Verify JWT token
+  // Generate refresh token
+  generateRefreshToken(user) {
+    const payload = {
+      id: user.id,
+      username: user.username,
+      type: 'refresh'
+    };
+
+    return jwt.sign(payload, this.refreshTokenSecret, {
+      expiresIn: this.refreshTokenExpiresIn
+    });
+  }
+
+  // Verify JWT access token
   verifyToken(token) {
     try {
-      return jwt.verify(token, this.jwtSecret);
+      const decoded = jwt.verify(token, this.jwtSecret);
+      if (decoded.type !== 'access') {
+        throw new Error('Invalid token type');
+      }
+      return decoded;
     } catch (error) {
-      throw new Error('Invalid or expired token');
+      throw new Error('Invalid or expired access token');
+    }
+  }
+
+  // Verify refresh token
+  verifyRefreshToken(token) {
+    try {
+      const decoded = jwt.verify(token, this.refreshTokenSecret);
+      if (decoded.type !== 'refresh') {
+        throw new Error('Invalid token type');
+      }
+      return decoded;
+    } catch (error) {
+      throw new Error('Invalid or expired refresh token');
     }
   }
 
@@ -56,12 +89,14 @@ class AuthService {
       role: 'user' // Default role
     });
 
-    // Generate token
-    const token = this.generateToken(user);
+    // Generate tokens
+    const accessToken = this.generateToken(user);
+    const refreshToken = this.generateRefreshToken(user);
 
     return {
       user: user.toJSON(),
-      token
+      accessToken,
+      refreshToken
     };
   }
 
@@ -84,32 +119,37 @@ class AuthService {
       throw new Error('Invalid username or password');
     }
 
-    // Generate token
-    const token = this.generateToken(user);
+    // Generate tokens
+    const accessToken = this.generateToken(user);
+    const refreshToken = this.generateRefreshToken(user);
 
     return {
       user: user.toJSON(),
-      token
+      accessToken,
+      refreshToken
     };
   }
 
   // Refresh token
-  async refreshToken(token) {
+  async refreshToken(refreshToken) {
     try {
-      const decoded = this.verifyToken(token);
+      const decoded = this.verifyRefreshToken(refreshToken);
       const user = await User.findById(decoded.id);
       
       if (!user || !user.is_active) {
         throw new Error('User not found or inactive');
       }
 
-      const newToken = this.generateToken(user);
+      // Generate new access token only (refresh token stays the same)
+      const newAccessToken = this.generateToken(user);
+      
       return {
         user: user.toJSON(),
-        token: newToken
+        accessToken: newAccessToken,
+        refreshToken: refreshToken // Keep the same refresh token
       };
     } catch (error) {
-      throw new Error('Invalid token');
+      throw new Error('Invalid refresh token');
     }
   }
 
