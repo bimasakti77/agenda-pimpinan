@@ -48,18 +48,12 @@ export default function CalendarView({ agendas, isLoading, selectedUserName }: C
 
   // Convert agendas to calendar events
   const events: CalendarEvent[] = useMemo(() => {
-    console.log('=== CALENDAR DEBUG ===');
-    console.log('All agendas:', agendas);
-    console.log('Current view:', currentView);
-    console.log('Current date:', currentDate);
-    
     // Filter agendas based on current view and date
     let filteredAgendas = agendas;
     
     if (currentView === Views.DAY) {
       // For day view, only show agendas for the selected date
       const selectedDate = moment(currentDate).format('YYYY-MM-DD');
-      console.log('Selected date for day view:', selectedDate);
       filteredAgendas = agendas.filter(agenda => {
         // Extract date part from agenda.date (handle both YYYY-MM-DD and datetime formats)
         let agendaDateStr;
@@ -69,22 +63,17 @@ export default function CalendarView({ agendas, isLoading, selectedUserName }: C
           agendaDateStr = agenda.date;
         }
         const matches = agendaDateStr === selectedDate;
-        console.log('Checking agenda:', agenda.title, 'date:', agenda.date, 'extracted:', agendaDateStr, 'matches:', matches);
         return matches;
       });
-      console.log('Filtered agendas for day view:', filteredAgendas);
     } else if (currentView === Views.WEEK) {
       // For week view, show agendas for the current week
       const weekStart = moment(currentDate).startOf('week');
       const weekEnd = moment(currentDate).endOf('week');
-      console.log('Week range:', weekStart.format('YYYY-MM-DD'), 'to', weekEnd.format('YYYY-MM-DD'));
       filteredAgendas = agendas.filter(agenda => {
         const agendaDate = moment(agenda.date);
         const isInWeek = agendaDate.isBetween(weekStart, weekEnd, null, '[]');
-        console.log('Agenda:', agenda.title, 'date:', agenda.date, 'in week:', isInWeek);
         return isInWeek;
       });
-      console.log('Filtered agendas for week view:', filteredAgendas);
     }
     // For month view, show all agendas (no filtering needed)
     
@@ -131,24 +120,12 @@ export default function CalendarView({ agendas, isLoading, selectedUserName }: C
         startDate = new Date(year, baseDate.getMonth(), day, startHour, startMin, startSec || 0);
         endDate = new Date(year, baseDate.getMonth(), day, endHour, endMin, endSec || 0);
         
-        console.log('Parsed dates for', agenda.title, ':', {
-          originalDate: agenda.date,
-          dateStr,
-          startTime,
-          endTime,
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString(),
-          isValid: !isNaN(startDate.getTime()) && !isNaN(endDate.getTime())
-        });
-        
         // Validate dates
         if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
-          console.warn('Invalid date for agenda:', agenda);
           startDate = new Date();
           endDate = new Date(Date.now() + 60 * 60 * 1000);
         }
       } catch (error) {
-        console.error('Error parsing dates for agenda:', agenda, error);
         startDate = new Date();
         endDate = new Date(Date.now() + 60 * 60 * 1000);
       }
@@ -165,27 +142,23 @@ export default function CalendarView({ agendas, isLoading, selectedUserName }: C
 
   // Handle event selection
   const handleSelectEvent = (event: CalendarEvent) => {
-    console.log('Selected event data:', event.resource);
     setSelectedEvent(event.resource);
     setIsModalOpen(true);
   };
 
   // Handle date selection (for future: add new agenda)
   const handleSelectSlot = ({ start, end }: { start: Date; end: Date }) => {
-    console.log("Selected slot:", start, end);
     // TODO: Implement add new agenda functionality
   };
 
   // Handle view change
   const handleViewChange = (view: any) => {
     setCurrentView(view);
-    console.log("View changed to:", view);
   };
 
   // Handle date change (navigation)
   const handleNavigate = (date: Date) => {
     setCurrentDate(date);
-    console.log("Navigated to:", date);
   };
 
   // Get event style based on priority and status

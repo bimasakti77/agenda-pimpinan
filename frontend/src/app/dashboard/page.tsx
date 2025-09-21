@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import toast, { Toaster } from "react-hot-toast";
-import { getStoredUser, getStoredToken, getStoredRefreshToken, clearAuthData, isTokenExpired, refreshAccessToken, type User } from "@/lib/auth";
+import { getStoredUser, getStoredToken, type User } from "@/lib/auth";
+import { useTokenManager } from "@/hooks/useTokenManager";
 import CalendarView from "@/components/CalendarView";
 import UserFilter from "@/components/UserFilter";
 import Sidebar from "@/components/Sidebar";
@@ -54,10 +55,8 @@ export default function DashboardPage() {
   const [recentAgendas, setRecentAgendas] = useState<Agenda[]>([]);
   const [selectedAgenda, setSelectedAgenda] = useState<Agenda | null>(null);
   const [showAgendaModal, setShowAgendaModal] = useState(false);
-  const [toastShown, setToastShown] = useState<{
-    accessTokenWarning: boolean;
-    refreshTokenWarning: boolean;
-  }>({ accessTokenWarning: false, refreshTokenWarning: false });
+  // Use token manager hook
+  const { isAuthenticated, isLoading: tokenLoading } = useTokenManager();
 
   useEffect(() => {
     const token = getStoredToken();
@@ -68,16 +67,7 @@ export default function DashboardPage() {
       return;
     }
 
-    // Check if token is expired and try to refresh
-    if (token && isTokenExpired(token)) {
-      refreshAccessToken().then((refreshSuccess) => {
-        if (!refreshSuccess) {
-          clearAuthData();
-          window.location.href = "/login";
-          return;
-        }
-      });
-    }
+    // Token checking is now handled by useTokenManager hook
 
     setUser(user);
     
@@ -99,91 +89,6 @@ export default function DashboardPage() {
   }, []);
 
 
-  // Check token expiry and handle redirects (separate from countdown display)
-  useEffect(() => {
-    const checkTokenExpiry = async () => {
-      const accessToken = getStoredToken();
-      const refreshToken = getStoredRefreshToken();
-      
-      if (!accessToken || !refreshToken) {
-        clearAuthData();
-        window.location.href = "/login";
-        return;
-      }
-
-      try {
-        // Check access token expiry
-        const accessPayload = JSON.parse(atob(accessToken.split('.')[1]));
-        const accessExp = accessPayload.exp * 1000;
-        const accessTimeLeft = Math.max(0, Math.floor((accessExp - Date.now()) / 1000));
-
-        // Check refresh token expiry
-        const refreshPayload = JSON.parse(atob(refreshToken.split('.')[1]));
-        const refreshExp = refreshPayload.exp * 1000;
-        const refreshTimeLeft = Math.max(0, Math.floor((refreshExp - Date.now()) / 1000));
-
-        console.log(`Token check - Access: ${accessTimeLeft}s, Refresh: ${refreshTimeLeft}s`);
-
-        // Auto refresh when access token expires
-        if (accessTimeLeft <= 0 && refreshTimeLeft > 0) {
-          console.log("Access token expired, attempting to refresh...");
-          const refreshSuccess = await refreshAccessToken();
-          if (refreshSuccess) {
-            console.log("Token refreshed successfully");
-            // Reset toast flags for new tokens
-            setToastShown({ accessTokenWarning: false, refreshTokenWarning: false });
-          } else {
-            console.log("Token refresh failed, redirecting to login");
-            clearAuthData();
-            window.location.href = "/login";
-          }
-          return;
-        }
-
-        // Show warnings only once
-        if (accessTimeLeft === 10 && !toastShown.accessTokenWarning) {
-          toast("⚠️ Access token akan expired dalam 10 detik!", {
-            duration: 3000,
-            style: {
-              background: '#f59e0b',
-              color: '#fff',
-            },
-          });
-          setToastShown(prev => ({ ...prev, accessTokenWarning: true }));
-        }
-        
-        if (refreshTimeLeft === 5 && !toastShown.refreshTokenWarning) {
-          toast.error("🚨 Refresh token akan expired dalam 5 detik! Aplikasi akan redirect ke login.", {
-            duration: 5000,
-          });
-          setToastShown(prev => ({ ...prev, refreshTokenWarning: true }));
-        }
-
-        // Redirect when refresh token expires
-        if (refreshTimeLeft <= 0) {
-          toast.error("⏰ Session expired! Redirecting to login...", {
-            duration: 2000,
-          });
-          setTimeout(() => {
-            clearAuthData();
-            window.location.href = "/login";
-          }, 2000);
-        }
-      } catch (error) {
-        console.error("Error checking token expiry:", error);
-        clearAuthData();
-        window.location.href = "/login";
-      }
-    };
-
-    // Check every 5 seconds instead of every second
-    const interval = setInterval(checkTokenExpiry, 5000);
-    
-    // Initial check
-    checkTokenExpiry();
-
-    return () => clearInterval(interval);
-  }, [toastShown]);
 
   const loadAgendas = async (userId?: number | null): Promise<void> => {
     try {
@@ -213,7 +118,6 @@ export default function DashboardPage() {
       });
 
       if (response.status === 401) {
-        clearAuthData();
         window.location.href = "/login";
         return;
       }
@@ -230,12 +134,12 @@ export default function DashboardPage() {
       } else {
         const errorMessage = data.message || "Gagal memuat data agenda";
         setError(errorMessage);
-        console.error("API Error:", data);
+        // API Error handled silently
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Terjadi kesalahan saat memuat agenda";
       setError(errorMessage);
-      console.error("Fetch Error:", error);
+      // Fetch error handled
     } finally {
       setIsLoading(false);
     }
@@ -264,7 +168,7 @@ export default function DashboardPage() {
     try {
       const token = getStoredToken();
       if (!token) {
-        console.error("No token found for chart data");
+        // No token for chart data
         return;
       }
 
@@ -276,13 +180,13 @@ export default function DashboardPage() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log("Chart data received:", data.data);
+        // Chart data loaded
         setChartData(data.data || []);
       } else {
-        console.error("Failed to load chart data:", response.statusText);
+        // Failed to load chart data
       }
     } catch (error) {
-      console.error("Error loading chart data:", error);
+      // Error loading chart data
     }
   };
 
@@ -290,7 +194,7 @@ export default function DashboardPage() {
     try {
       const token = getStoredToken();
       if (!token) {
-        console.error("No token found for dashboard stats");
+        // No token for dashboard stats
         return;
       }
 
@@ -302,18 +206,15 @@ export default function DashboardPage() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log("Dashboard stats received:", data.data);
         setStats(data.data || {
           totalAgendas: 0,
           thisMonthAgendas: 0,
           totalUsers: 0,
           pendingAgendas: 0
         });
-      } else {
-        console.error("Failed to load dashboard stats:", response.statusText);
       }
     } catch (error) {
-      console.error("Error loading dashboard stats:", error);
+      // Silent error handling
     }
   };
 
@@ -321,7 +222,6 @@ export default function DashboardPage() {
     try {
       const token = getStoredToken();
       if (!token) {
-        console.error("No token found for recent agendas");
         return;
       }
 
@@ -333,13 +233,13 @@ export default function DashboardPage() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log("Recent agendas received:", data.data);
+        // Recent agendas loaded
         setRecentAgendas(data.data?.agenda || []);
       } else {
-        console.error("Failed to load recent agendas:", response.statusText);
+        // Failed to load recent agendas
       }
     } catch (error) {
-      console.error("Error loading recent agendas:", error);
+      // Error loading recent agendas
     }
   };
 
@@ -385,6 +285,21 @@ export default function DashboardPage() {
     }, 1000);
   };
 
+  const handleViewChange = (view: string) => {
+    setCurrentView(view);
+    
+    // Handle navigation to different views
+    if (view === "users") {
+      window.location.href = "/users";
+    } else if (view === "calendar") {
+      // Stay in dashboard but show calendar view
+      setViewMode("calendar");
+    } else if (view === "dashboard") {
+      // Stay in dashboard but show list view
+      setViewMode("list");
+    }
+  };
+
   const formatDate = (dateString: string) => {
     try {
       // If it's just a date string (YYYY-MM-DD), format it directly
@@ -411,7 +326,7 @@ export default function DashboardPage() {
         year: "numeric",
       });
     } catch (error) {
-      console.error("Error formatting date:", dateString, error);
+      // Error formatting date
       return "Tanggal tidak valid";
     }
   };
@@ -434,7 +349,7 @@ export default function DashboardPage() {
         minute: "2-digit",
       });
     } catch (error) {
-      console.error("Error formatting time:", timeString, error);
+      // Error formatting time
       return "Waktu tidak valid";
     }
   };
@@ -477,8 +392,7 @@ export default function DashboardPage() {
   }
 
   const renderMainContent = () => {
-    console.log("Current view:", currentView);
-    console.log("Chart data:", chartData);
+    // Debug info removed
     switch (currentView) {
       case "dashboard":
         return (
@@ -623,7 +537,7 @@ export default function DashboardPage() {
         user={user}
         onLogout={handleLogout}
         currentView={currentView}
-        onViewChange={setCurrentView}
+        onViewChange={handleViewChange}
       />
 
       {/* Main Content */}

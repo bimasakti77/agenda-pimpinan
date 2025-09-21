@@ -6,6 +6,7 @@ const validate = (schema) => {
     const { error } = schema.validate(req.body);
     
     if (error) {
+      console.log('Validation error:', error.details);
       const errorMessage = error.details.map(detail => detail.message).join(', ');
       return res.status(400).json({
         success: false,
@@ -52,8 +53,6 @@ const schemas = {
   }),
 
   updateUser: Joi.object({
-    username: Joi.string().alphanum().min(3).max(30).optional(),
-    email: Joi.string().email().optional(),
     full_name: Joi.string().min(2).max(100).optional(),
     position: Joi.string().max(100).optional(),
     department: Joi.string().max(100).optional(),
@@ -112,10 +111,21 @@ const schemas = {
     search: Joi.string().max(100).optional()
   }),
 
+  createUser: Joi.object({
+    username: Joi.string().alphanum().min(3).max(30).required(),
+    email: Joi.string().email().required(),
+    password: Joi.string().min(6).required(),
+    full_name: Joi.string().min(2).max(100).required(),
+    position: Joi.string().max(100).optional(),
+    department: Joi.string().max(100).optional(),
+    role: Joi.string().valid('user', 'admin', 'superadmin').default('user')
+  }),
+
   userFilters: Joi.object({
     page: Joi.number().integer().min(1).default(1),
     limit: Joi.number().integer().min(1).max(100).default(10),
     role: Joi.string().valid('user', 'admin', 'superadmin').optional(),
+    is_active: Joi.boolean().optional(),
     search: Joi.string().max(100).optional()
   })
 };

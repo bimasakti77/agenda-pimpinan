@@ -4,8 +4,8 @@ const User = require('../models/User');
 class AuthService {
   constructor() {
     this.jwtSecret = process.env.JWT_SECRET || 'your-secret-key';
-        this.jwtExpiresIn = process.env.JWT_EXPIRES_IN || '30s'; // Testing: 30 seconds access token
-        this.refreshTokenExpiresIn = process.env.REFRESH_TOKEN_EXPIRES_IN || '1m'; // Testing: 1 minute refresh token
+        this.jwtExpiresIn = process.env.JWT_EXPIRES_IN || '15m'; // Google standard: 15 minutes access token
+        this.refreshTokenExpiresIn = process.env.REFRESH_TOKEN_EXPIRES_IN || '7d'; // Google standard: 7 days refresh token
     this.refreshTokenSecret = process.env.REFRESH_TOKEN_SECRET || 'your-refresh-secret-key';
   }
 

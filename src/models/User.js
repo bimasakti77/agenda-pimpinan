@@ -72,25 +72,56 @@ class User {
     return new User(result.rows[0]);
   }
 
-  // Get all users with pagination
-  static async findAll(page = 1, limit = 10, role = null) {
+  // Get all users with pagination and filtering
+  static async findAll(page = 1, limit = 10, role = null, is_active = null, search = null) {
     const offset = (page - 1) * limit;
     let query = 'SELECT id, username, email, role, full_name, position, department, is_active, created_at, updated_at FROM users';
     let countQuery = 'SELECT COUNT(*) FROM users';
     const values = [];
+    const conditions = [];
+    let paramCount = 1;
     
+    // Add role filter
     if (role) {
-      query += ' WHERE role = $1';
-      countQuery += ' WHERE role = $1';
+      conditions.push(`role = $${paramCount}`);
       values.push(role);
+      paramCount++;
     }
     
-    query += ` ORDER BY created_at DESC LIMIT $${values.length + 1} OFFSET $${values.length + 2}`;
+    // Add active status filter
+    if (is_active !== null) {
+      conditions.push(`is_active = $${paramCount}`);
+      values.push(is_active === 'true' || is_active === true);
+      paramCount++;
+    }
+    
+    // Add search filter
+    if (search) {
+      conditions.push(`(
+        username ILIKE $${paramCount} OR 
+        email ILIKE $${paramCount} OR 
+        full_name ILIKE $${paramCount} OR 
+        position ILIKE $${paramCount} OR 
+        department ILIKE $${paramCount}
+      )`);
+      values.push(`%${search}%`);
+      paramCount++;
+    }
+    
+    // Apply conditions
+    if (conditions.length > 0) {
+      const whereClause = ' WHERE ' + conditions.join(' AND ');
+      query += whereClause;
+      countQuery += whereClause;
+    }
+    
+    // Add ordering and pagination
+    query += ` ORDER BY created_at DESC LIMIT $${paramCount} OFFSET $${paramCount + 1}`;
     values.push(limit, offset);
     
     const [usersResult, countResult] = await Promise.all([
       pool.query(query, values),
-      pool.query(countQuery, role ? [role] : [])
+      pool.query(countQuery, values.slice(0, -2)) // Remove limit and offset for count
     ]);
     
     const users = usersResult.rows.map(row => new User(row));

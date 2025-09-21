@@ -23,21 +23,24 @@ export default function Sidebar({ user, onLogout, currentView, onViewChange }: S
       id: "dashboard",
       label: "Dashboard",
       icon: BarChart3,
-      description: "Overview & Statistics"
+      description: "Overview & Statistics",
+      roles: ["user", "admin", "superadmin"]
     },
     {
       id: "calendar",
       label: "Kalender",
       icon: Calendar,
-      description: "View Agenda Calendar"
+      description: "View Agenda Calendar",
+      roles: ["user", "admin", "superadmin"]
     },
     {
       id: "users",
       label: "Users",
       icon: Users,
-      description: "Manage Users"
+      description: "Manage Users",
+      roles: ["superadmin"] // Only superadmin can access
     }
-  ];
+  ].filter(item => !user || item.roles.includes(user.role));
 
   return (
     <div className={`bg-gray-900 text-white transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} min-h-screen flex flex-col`}>

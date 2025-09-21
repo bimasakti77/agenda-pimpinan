@@ -77,7 +77,15 @@ class UserService {
       throw new Error('User not found');
     }
 
-    await user.update(updateData);
+    // Remove username and email from update data to prevent modification
+    const { username, email, ...allowedUpdateData } = updateData;
+    
+    // Log warning if someone tries to update username or email
+    if (username !== undefined || email !== undefined) {
+      console.warn(`Attempt to update username or email for user ${id} blocked`);
+    }
+
+    await user.update(allowedUpdateData);
     return user;
   }
 

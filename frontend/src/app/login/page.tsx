@@ -58,8 +58,15 @@ export default function LoginPage() {
           });
         }
       } else {
-        toast.error(data.message || "Login gagal. Periksa username dan password!", {
-          duration: 3000,
+        // Handle specific error messages
+        let errorMessage = data.message || "Login gagal. Periksa username dan password!";
+        
+        if (data.message === 'Account is deactivated') {
+          errorMessage = "Akun non aktif hubungi administrator";
+        }
+        
+        toast.error(errorMessage, {
+          duration: 5000,
           style: {
             background: '#EF4444',
             color: '#fff',

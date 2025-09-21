@@ -19,7 +19,6 @@ export default function AgendaChart({ monthlyData }: AgendaChartProps) {
     return monthlyData || [];
   }, [monthlyData]);
 
-  console.log("AgendaChart received data:", memoizedData);
   
   if (!memoizedData || memoizedData.length === 0) {
     return (
