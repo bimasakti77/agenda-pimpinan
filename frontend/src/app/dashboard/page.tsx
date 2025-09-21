@@ -12,6 +12,8 @@ import UserFilter from "@/components/UserFilter";
 import Sidebar from "@/components/Sidebar";
 import StatsCards from "@/components/StatsCards";
 import AgendaChart from "@/components/AgendaChart";
+import ProfileDropdown from "@/components/ProfileDropdown";
+import { BarChart3, Calendar, Users } from "lucide-react";
 
 interface Agenda {
   id: number;
@@ -546,28 +548,48 @@ export default function DashboardPage() {
         <header className="bg-white shadow-sm border-b">
           <div className="px-6 py-4">
             <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 capitalize">
-                  {currentView === "dashboard" ? "Dashboard Overview" : 
-                   currentView === "calendar" ? "Kalender Agenda" : 
-                   currentView === "users" ? "User Management" : "Dashboard"}
-                </h1>
-                <p className="text-gray-600 mt-1">
-                  {currentView === "dashboard" ? "Ringkasan statistik dan grafik agenda" :
-                   currentView === "calendar" ? "Lihat dan kelola agenda dalam kalender" :
-                   currentView === "users" ? "Kelola pengguna sistem" : "Selamat datang di sistem agenda pimpinan"}
-                </p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <img 
-                  src="/assets/logos/logokumham.png" 
-                  alt="Logo Kementerian Hukum" 
-                  className="h-10 w-auto"
-                />
-                <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900">Kementerian Hukum</p>
-                  <p className="text-xs text-gray-500">Republik Indonesia</p>
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-lg">
+                  {currentView === "dashboard" ? (
+                    <BarChart3 className="h-6 w-6 text-blue-600" />
+                  ) : currentView === "calendar" ? (
+                    <Calendar className="h-6 w-6 text-blue-600" />
+                  ) : currentView === "users" ? (
+                    <Users className="h-6 w-6 text-blue-600" />
+                  ) : (
+                    <BarChart3 className="h-6 w-6 text-blue-600" />
+                  )}
                 </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900 capitalize">
+                    {currentView === "dashboard" ? "Dashboard Overview" : 
+                     currentView === "calendar" ? "Kalender Agenda" : 
+                     currentView === "users" ? "User Management" : "Dashboard"}
+                  </h1>
+                  <p className="text-gray-600 mt-1">
+                    {currentView === "dashboard" ? "Ringkasan statistik dan grafik agenda" :
+                     currentView === "calendar" ? "Lihat dan kelola agenda dalam kalender" :
+                     currentView === "users" ? "Kelola pengguna sistem" : "Selamat datang di sistem agenda pimpinan"}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center">
+                {/* Profile Dropdown */}
+                {user && (
+                  <ProfileDropdown 
+                    user={{
+                      ...user,
+                      position: user.position || 'Pegawai',
+                      is_active: user.is_active !== undefined ? user.is_active : true
+                    }}
+                    onLogout={() => {
+                      localStorage.removeItem('user');
+                      localStorage.removeItem('accessToken');
+                      localStorage.removeItem('refreshToken');
+                      window.location.href = '/login';
+                    }}
+                  />
+                )}
               </div>
             </div>
           </div>

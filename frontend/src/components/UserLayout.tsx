@@ -4,7 +4,9 @@ import { useState, useEffect } from "react";
 import { getStoredUser, getStoredToken, type User } from "@/lib/auth";
 import { useTokenManager } from "@/hooks/useTokenManager";
 import Sidebar from "./Sidebar";
+import ProfileDropdown from "./ProfileDropdown";
 import toast, { Toaster } from "react-hot-toast";
+import { Users, UserPlus, Edit, Eye } from "lucide-react";
 
 interface UserLayoutProps {
   children: React.ReactNode;
@@ -118,24 +120,35 @@ export default function UserLayout({ children, title = "User Management", descri
         <header className="bg-white shadow-sm border-b">
           <div className="px-6 py-4">
             <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  {title}
-                </h1>
-                <p className="text-gray-600 mt-1">
-                  {description}
-                </p>
-              </div>
-              <div className="flex items-center space-x-2">
-                <img 
-                  src="/assets/logos/logokumham.png" 
-                  alt="Logo Kementerian Hukum" 
-                  className="h-10 w-auto"
-                />
-                <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900">Kementerian Hukum</p>
-                  <p className="text-xs text-gray-500">Republik Indonesia</p>
+              <div className="flex items-center space-x-4">
+                <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-lg">
+                  {title?.toLowerCase().includes('users') || title?.toLowerCase().includes('user') ? (
+                    <Users className="h-6 w-6 text-blue-600" />
+                  ) : title?.toLowerCase().includes('new') || title?.toLowerCase().includes('tambah') ? (
+                    <UserPlus className="h-6 w-6 text-blue-600" />
+                  ) : title?.toLowerCase().includes('edit') || title?.toLowerCase().includes('ubah') ? (
+                    <Edit className="h-6 w-6 text-blue-600" />
+                  ) : title?.toLowerCase().includes('detail') || title?.toLowerCase().includes('lihat') ? (
+                    <Eye className="h-6 w-6 text-blue-600" />
+                  ) : (
+                    <Users className="h-6 w-6 text-blue-600" />
+                  )}
                 </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    {title}
+                  </h1>
+                  <p className="text-gray-600 mt-1">
+                    {description}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center">
+                {/* Profile Dropdown */}
+                <ProfileDropdown 
+                  user={user}
+                  onLogout={handleLogout}
+                />
               </div>
             </div>
           </div>

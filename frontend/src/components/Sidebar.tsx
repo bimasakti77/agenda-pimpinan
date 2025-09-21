@@ -48,24 +48,41 @@ export default function Sidebar({ user, onLogout, currentView, onViewChange }: S
       <div className="p-4 border-b border-gray-700">
         <div className="flex items-center justify-between">
           {!isCollapsed && (
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center justify-center w-full space-x-4">
+              {/* Logo - Kiri */}
               <img 
                 src="/assets/logos/logokumham.png" 
                 alt="Logo Kementerian Hukum" 
                 className="h-8 w-auto"
               />
-              <div>
-                <h1 className="text-xl font-bold">Agenda Pimpinan</h1>
-                <p className="text-sm text-gray-400">Kementerian Hukum RI</p>
+              
+              {/* Garis Pemisah Berpendar */}
+              <div 
+                className="h-12 w-px bg-white opacity-30"
+                style={{
+                  boxShadow: '0 0 5px rgba(255, 255, 255, 0.5), 0 0 10px rgba(255, 255, 255, 0.3), 0 0 15px rgba(255, 255, 255, 0.2)'
+                }}
+              ></div>
+              
+              {/* Agenda Pimpinan - Kanan */}
+              <div className="text-center">
+                <h1 className="text-xl font-bold text-white tracking-wide drop-shadow-lg" style={{textShadow: '0 0 10px rgba(255, 255, 255, 0.5), 0 0 20px rgba(255, 255, 255, 0.3), 0 0 30px rgba(255, 255, 255, 0.2)'}}>
+                  Agenda Pimpinan
+                </h1>
               </div>
             </div>
           )}
           {isCollapsed && (
-            <div className="flex justify-center w-full">
+            <div className="flex flex-col items-center justify-center w-full space-y-2">
+              <div className="text-center">
+                <h1 className="text-lg font-bold text-white drop-shadow-lg" style={{textShadow: '0 0 8px rgba(255, 255, 255, 0.5), 0 0 16px rgba(255, 255, 255, 0.3), 0 0 24px rgba(255, 255, 255, 0.2)'}}>
+                  AP
+                </h1>
+              </div>
               <img 
                 src="/assets/logos/logokumham.png" 
                 alt="Logo Kementerian Hukum" 
-                className="h-8 w-auto"
+                className="h-4 w-auto"
               />
             </div>
           )}

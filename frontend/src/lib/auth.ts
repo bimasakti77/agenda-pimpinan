@@ -6,6 +6,8 @@ export interface User {
   full_name: string;
   role: string;
   email: string;
+  position?: string;
+  is_active?: boolean;
 }
 
 export const clearAuthData = () => {

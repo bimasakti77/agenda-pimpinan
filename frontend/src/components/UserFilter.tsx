@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { getStoredToken } from "@/lib/auth";
 
 interface User {
@@ -25,6 +26,7 @@ export default function UserFilter({ onUserSelect, selectedUserId }: UserFilterP
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [isSelecting, setIsSelecting] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
     loadUsers();
@@ -40,7 +42,7 @@ export default function UserFilter({ onUserSelect, selectedUserId }: UserFilterP
         return;
       }
 
-      const response = await fetch("http://localhost:3000/api/users", {
+      const response = await fetch("http://localhost:3000/api/users?limit=100", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -82,6 +84,13 @@ export default function UserFilter({ onUserSelect, selectedUserId }: UserFilterP
       setTimeout(() => setIsSelecting(false), 1000);
     }
   };
+
+  // Filter users based on search term
+  const filteredUsers = users.filter(user => 
+    user.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.position.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
 
   if (isLoading) {
@@ -139,23 +148,40 @@ export default function UserFilter({ onUserSelect, selectedUserId }: UserFilterP
               <SelectValue placeholder="Pilih user untuk melihat agenda mereka" />
             </SelectTrigger>
             <SelectContent>
-              {users.map((user) => (
-                <SelectItem key={user.id} value={user.id.toString()}>
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0 mr-2">
-                      {user.role === 'superadmin' && <span className="text-lg">👑</span>}
-                      {user.role === 'admin' && <span className="text-lg">⚡</span>}
-                      {user.role === 'user' && <span className="text-lg">👤</span>}
-                    </div>
-                    <div>
-                      <div className="font-medium">{user.full_name}</div>
-                      <div className="text-xs text-gray-500">
-                        @{user.username} • {user.position}
+              {/* Search Input */}
+              <div className="p-2 border-b">
+                <Input
+                  placeholder="Cari user..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="h-8"
+                />
+              </div>
+              
+              {/* User List */}
+              {filteredUsers.length > 0 ? (
+                filteredUsers.map((user) => (
+                  <SelectItem key={user.id} value={user.id.toString()}>
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0 mr-2">
+                        {user.role === 'superadmin' && <span className="text-lg">👑</span>}
+                        {user.role === 'admin' && <span className="text-lg">⚡</span>}
+                        {user.role === 'user' && <span className="text-lg">👤</span>}
+                      </div>
+                      <div>
+                        <div className="font-medium">{user.full_name}</div>
+                        <div className="text-xs text-gray-500">
+                          @{user.username} • {user.position}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </SelectItem>
-              ))}
+                  </SelectItem>
+                ))
+              ) : (
+                <div className="p-2 text-sm text-gray-500 text-center">
+                  Tidak ada user yang ditemukan
+                </div>
+              )}
             </SelectContent>
           </Select>
           
