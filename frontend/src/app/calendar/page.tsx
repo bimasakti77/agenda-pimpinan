@@ -24,6 +24,7 @@ interface Agenda {
   priority: string;
   created_by_name: string;
   attendees: string[];
+  notes?: string;
 }
 
 export default function CalendarPage() {

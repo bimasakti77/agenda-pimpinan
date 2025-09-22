@@ -8,8 +8,11 @@ import "../app/calendar.css";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, UserCheck } from "lucide-react";
+import { Plus, UserCheck, Trash2, Edit } from "lucide-react";
 import UpdateAgendaStatus from "./UpdateAgendaStatus";
+import EditAgendaForm from "./EditAgendaForm";
+import { getStoredToken } from "@/lib/auth";
+import toast from "react-hot-toast";
 
 // Setup moment localizer
 const localizer = momentLocalizer(moment);
@@ -26,6 +29,8 @@ interface Agenda {
   priority: string;
   created_by_name: string;
   attendees: string[];
+  notes?: string;
+  attendance_status?: string;
 }
 
 interface CalendarEvent {
@@ -54,6 +59,8 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
   const [selectedEvent, setSelectedEvent] = useState<Agenda | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isStatusUpdateOpen, setIsStatusUpdateOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isEditAgendaOpen, setIsEditAgendaOpen] = useState(false);
   const [currentView, setCurrentView] = useState(Views.MONTH);
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -162,10 +169,155 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
     setIsStatusUpdateOpen(true);
   };
 
-  const handleStatusUpdateSuccess = () => {
+  const handleStatusUpdateSuccess = async () => {
     setIsStatusUpdateOpen(false);
+    
+    // Refresh the selected event data if modal is still open
+    if (selectedEvent && isModalOpen) {
+      try {
+        const token = getStoredToken();
+        if (token) {
+          const response = await fetch(`http://localhost:3000/api/agenda/${selectedEvent.id}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.data) {
+              setSelectedEvent(result.data);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error refreshing selected event after status update:", error);
+      }
+    }
+    
     if (onAgendaUpdate) {
       onAgendaUpdate();
+    }
+  };
+
+  // Handle edit agenda
+  const handleEditAgenda = () => {
+    if (!selectedEvent) return;
+    setIsEditAgendaOpen(true);
+  };
+
+  const handleEditAgendaSuccess = async () => {
+    setIsEditAgendaOpen(false);
+    
+    // Refresh the selected event data if modal is still open
+    if (selectedEvent && isModalOpen) {
+      try {
+        const token = getStoredToken();
+        if (token) {
+          const response = await fetch(`http://localhost:3000/api/agenda/${selectedEvent.id}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.data) {
+              setSelectedEvent(result.data);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error refreshing selected event:", error);
+      }
+    }
+    
+    if (onAgendaUpdate) {
+      onAgendaUpdate();
+    }
+  };
+
+  // Check if agenda can be deleted (date is today or future, and not started yet)
+  const canDeleteAgenda = (agenda: Agenda) => {
+    if (!agenda.date) return false;
+    
+    const now = new Date();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Reset time to start of day
+    
+    const agendaDate = new Date(agenda.date);
+    agendaDate.setHours(0, 0, 0, 0); // Reset time to start of day
+    
+    // Check if agenda date is today or future
+    if (agendaDate < today) return false;
+    
+    // If agenda is today, check if it has already started
+    if (agendaDate.getTime() === today.getTime()) {
+      if (!agenda.start_time) return true; // No start time, allow deletion
+      
+      const startDateTime = new Date(`${agenda.date}T${agenda.start_time}`);
+      return now < startDateTime; // Can delete only if not started yet
+    }
+    
+    // Future dates can always be deleted
+    return true;
+  };
+
+  // Handle delete agenda
+  const handleDeleteAgenda = () => {
+    if (!selectedEvent) return;
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const confirmDeleteAgenda = async () => {
+    if (!selectedEvent) return;
+    setIsDeleteConfirmOpen(false);
+
+    try {
+      const token = localStorage.getItem("accessToken");
+      if (!token) {
+        throw new Error("Token tidak ditemukan");
+      }
+
+      const response = await fetch(`http://localhost:3000/api/agenda/${selectedEvent.id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.status === 401) {
+        throw new Error("Sesi berakhir. Silakan login kembali.");
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Gagal menghapus agenda");
+      }
+
+      toast.success("Agenda berhasil dihapus!", {
+        duration: 3000,
+        style: {
+          background: '#10B981',
+          color: '#fff',
+        },
+      });
+
+      // Close modal and refresh data
+      setIsModalOpen(false);
+      if (onAgendaUpdate) {
+        onAgendaUpdate();
+      }
+
+    } catch (error: any) {
+      console.error("Error deleting agenda:", error);
+      toast.error(error.message || "Terjadi kesalahan saat menghapus agenda", {
+        duration: 3000,
+        style: {
+          background: '#EF4444',
+          color: '#fff',
+        },
+      });
     }
   };
 
@@ -187,6 +339,7 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
   // Get event style based on priority and status
   const eventStyleGetter = (event: CalendarEvent) => {
     const agenda = event.resource;
+    const currentStatus = getAgendaStatus(agenda); // Use real-time status
     let backgroundColor = "#3174ad"; // default blue
     
     // Priority colors
@@ -198,11 +351,11 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
       backgroundColor = "#16a34a"; // green
     }
 
-    // Status opacity
+    // Status opacity based on real-time status
     let opacity = 1;
-    if (agenda.status === "completed") {
+    if (currentStatus === "completed") {
       opacity = 0.6;
-    } else if (agenda.status === "cancelled") {
+    } else if (currentStatus === "cancelled") {
       opacity = 0.4;
     }
 
@@ -280,6 +433,47 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
     } catch (error) {
       console.error("Error formatting time:", timeString, error);
       return "Waktu tidak valid";
+    }
+  };
+
+  // Calculate agenda status based on current time vs agenda time
+  const getAgendaStatus = (agenda: Agenda) => {
+    try {
+      const now = new Date();
+      const agendaDate = new Date(agenda.date);
+      
+      // Skip if no time information
+      if (!agenda.start_time || !agenda.end_time) {
+        return agenda.status; // Fallback to database status
+      }
+      
+      // Create datetime objects for start and end times
+      const startDateTime = new Date(`${agenda.date}T${agenda.start_time}`);
+      const endDateTime = new Date(`${agenda.date}T${agenda.end_time}`);
+      
+      // Check if agenda is today
+      const isToday = agendaDate.toDateString() === now.toDateString();
+      
+      if (isToday) {
+        if (now < startDateTime) {
+          return 'scheduled'; // Before start time
+        } else if (now >= startDateTime && now <= endDateTime) {
+          return 'in_progress'; // During agenda time
+        } else if (now > endDateTime) {
+          return 'completed'; // After end time
+        }
+      } else if (agendaDate < now) {
+        // Past date
+        return 'completed';
+      } else {
+        // Future date
+        return 'scheduled';
+      }
+      
+      return agenda.status; // Fallback
+    } catch (error) {
+      console.error("Error calculating agenda status:", error);
+      return agenda.status; // Fallback to database status
     }
   };
 
@@ -423,81 +617,140 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
           
           {selectedEvent && (
             <div className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Informasi Umum</CardTitle>
+              {/* Status Kehadiran Card - Main card with all information */}
+              <Card className="border-l-4 border-l-blue-500">
+                <CardHeader className="bg-blue-50">
+                  <CardTitle className="text-lg text-blue-800 flex items-center gap-2">
+                    <UserCheck className="h-5 w-5" />
+                    Status Kehadiran
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-4">
+                  {/* Status Acara */}
+                  <div>
+                    <label className="font-medium text-gray-700 text-sm mb-2 block">Status Acara:</label>
+                    <div className="flex items-center gap-3">
+                      <span className={`px-4 py-2 rounded-lg text-sm font-medium ${getStatusColor(getAgendaStatus(selectedEvent))}`}>
+                        {getAgendaStatus(selectedEvent) === 'scheduled' ? 'Terjadwal' : 
+                         getAgendaStatus(selectedEvent) === 'in_progress' ? 'Sedang Berlangsung' :
+                         getAgendaStatus(selectedEvent) === 'completed' ? 'Selesai' : 'Dibatalkan'}
+                      </span>
+                      <span className={`px-3 py-1 rounded-full text-sm ${getPriorityColor(selectedEvent.priority)}`}>
+                        Prioritas: {selectedEvent.priority}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Status Kehadiran - Always shown */}
+                  <div>
+                    <label className="font-medium text-gray-700 text-sm mb-2 block">Status Kehadiran:</label>
+                    <div className="flex items-center gap-3">
+                      {selectedEvent.attendance_status ? (
+                        <span className={`px-4 py-2 rounded-lg text-sm font-medium border ${
+                          selectedEvent.attendance_status === 'attending' ? 'bg-green-100 text-green-800 border-green-200' :
+                          selectedEvent.attendance_status === 'not_attending' ? 'bg-red-100 text-red-800 border-red-200' :
+                          selectedEvent.attendance_status === 'represented' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
+                          'bg-green-100 text-green-800 border-green-200'
+                        }`}>
+                          {selectedEvent.attendance_status === 'attending' ? 'Menghadiri' :
+                           selectedEvent.attendance_status === 'not_attending' ? 'Tidak Menghadiri' :
+                           selectedEvent.attendance_status === 'represented' ? 'Diwakilkan' : 'Sudah Diupdate'}
+                        </span>
+                      ) : (
+                        <span className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 border border-gray-200">
+                          Belum Diupdate
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Informasi Umum - Grid layout */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="font-medium text-gray-700">Tanggal</label>
-                      <p className="text-gray-900">{formatDate(selectedEvent.date)}</p>
+                      <label className="font-medium text-gray-700 text-sm">Tanggal</label>
+                      <p className="text-gray-900 text-sm">{formatDate(selectedEvent.date)}</p>
                     </div>
                     <div>
-                      <label className="font-medium text-gray-700">Waktu</label>
-                      <p className="text-gray-900">
+                      <label className="font-medium text-gray-700 text-sm">Waktu</label>
+                      <p className="text-gray-900 text-sm">
                         {formatTime(selectedEvent.start_time)} - {formatTime(selectedEvent.end_time)}
                       </p>
                     </div>
                     <div>
-                      <label className="font-medium text-gray-700">Lokasi</label>
-                      <p className="text-gray-900">{selectedEvent.location || "Tidak ditentukan"}</p>
+                      <label className="font-medium text-gray-700 text-sm">Lokasi</label>
+                      <p className="text-gray-900 text-sm">{selectedEvent.location || "Tidak ditentukan"}</p>
                     </div>
                     <div>
-                      <label className="font-medium text-gray-700">Dibuat oleh</label>
-                      <p className="text-gray-900">{selectedEvent.created_by_name}</p>
+                      <label className="font-medium text-gray-700 text-sm">Dibuat oleh</label>
+                      <p className="text-gray-900 text-sm">{selectedEvent.created_by_name}</p>
                     </div>
                   </div>
+
+                  {/* Deskripsi */}
+                  {selectedEvent.description && (
+                    <div>
+                      <label className="font-medium text-gray-700 text-sm">Deskripsi</label>
+                      <p className="text-gray-700 text-sm mt-1 leading-relaxed">{selectedEvent.description}</p>
+                    </div>
+                  )}
                   
-                  <div className="flex gap-2">
-                    <span className={`px-3 py-1 rounded-full text-sm ${getStatusColor(selectedEvent.status)}`}>
-                      Status: {selectedEvent.status}
-                    </span>
-                    <span className={`px-3 py-1 rounded-full text-sm ${getPriorityColor(selectedEvent.priority)}`}>
-                      Prioritas: {selectedEvent.priority}
-                    </span>
-                  </div>
+                  {/* Catatan Detail Kehadiran */}
+                  {selectedEvent.notes && (
+                    <div>
+                      <label className="font-medium text-gray-700 text-sm">Catatan Detail:</label>
+                      <p className="text-gray-900 text-sm mt-1">{selectedEvent.notes}</p>
+                    </div>
+                  )}
+                  
+                  {/* Daftar Peserta - Mini Table */}
+                  {selectedEvent.attendees && selectedEvent.attendees.length > 0 && (
+                    <div>
+                      <label className="font-medium text-gray-700 text-sm mb-3 block">Daftar Peserta:</label>
+                      <div className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                        <div className="max-h-32 overflow-y-auto">
+                          <table className="w-full text-sm">
+                            <thead className="bg-gray-100 sticky top-0">
+                              <tr>
+                                <th className="text-left py-2 px-3 text-gray-600 font-medium text-xs">No</th>
+                                <th className="text-left py-2 px-3 text-gray-600 font-medium text-xs">Nama Peserta</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {selectedEvent.attendees.map((attendee, index) => (
+                                <tr 
+                                  key={index} 
+                                  className={`border-b border-gray-200 last:border-b-0 ${
+                                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                  }`}
+                                >
+                                  <td className="py-2 px-3 text-gray-500 text-xs font-mono">
+                                    {index + 1}
+                                  </td>
+                                  <td className="py-2 px-3 text-gray-800 font-medium">
+                                    {attendee}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <div className="bg-gray-100 px-3 py-2 text-xs text-gray-500 border-t border-gray-200">
+                          Total: {selectedEvent.attendees.length} peserta
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
-              {selectedEvent.description && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Deskripsi</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-gray-700">{selectedEvent.description}</p>
-                  </CardContent>
-                </Card>
-              )}
 
-              {selectedEvent.attendees && selectedEvent.attendees.length > 0 && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Peserta</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-2">
-                      {selectedEvent.attendees.map((attendee, index) => (
-                        <span
-                          key={index}
-                          className="inline-block bg-gray-100 text-gray-800 text-sm px-3 py-1 rounded-full"
-                        >
-                          {attendee}
-                        </span>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Update Status Button - Only show for regular users */}
+              {/* Action Buttons - Second for immediate access */}
               {userRole === 'user' && currentUser && (
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-lg">Aksi</CardTitle>
                   </CardHeader>
-                  <CardContent>
+                  <CardContent className="space-y-3">
                     <Button 
                       onClick={handleStatusUpdate}
                       className="w-full flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white"
@@ -505,9 +758,34 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
                       <UserCheck className="h-4 w-4" />
                       Update Status Kehadiran
                     </Button>
+                    
+                    {/* Edit Button - Only show if agenda can be edited (same condition as delete) */}
+                    {selectedEvent && canDeleteAgenda(selectedEvent) && (
+                      <Button 
+                        onClick={handleEditAgenda}
+                        variant="outline"
+                        className="w-full flex items-center gap-2 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300"
+                      >
+                        <Edit className="h-4 w-4" />
+                        Edit Agenda
+                      </Button>
+                    )}
+                    
+                    {/* Delete Button - Only show if agenda date is today or future */}
+                    {selectedEvent && canDeleteAgenda(selectedEvent) && (
+                      <Button 
+                        onClick={handleDeleteAgenda}
+                        variant="outline"
+                        className="w-full flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Hapus Agenda
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               )}
+
             </div>
           )}
         </DialogContent>
@@ -521,6 +799,53 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
         agenda={selectedEvent}
         currentUser={currentUser || null}
       />
+
+      {/* Edit Agenda Modal */}
+      <EditAgendaForm
+        isOpen={isEditAgendaOpen}
+        onClose={() => setIsEditAgendaOpen(false)}
+        onSuccess={handleEditAgendaSuccess}
+        agenda={selectedEvent}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold flex items-center gap-2">
+              <div className="w-8 h-8 bg-red-100 rounded-full flex items-center justify-center">
+                <Trash2 className="h-4 w-4 text-red-600" />
+              </div>
+              Konfirmasi Hapus
+            </DialogTitle>
+            <DialogDescription>
+              Apakah Anda yakin ingin menghapus agenda "{selectedEvent?.title}"?
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <p className="text-sm text-gray-500 mb-4">
+              Tindakan ini tidak dapat dibatalkan. Agenda akan dihapus secara permanen.
+            </p>
+            
+            <div className="flex justify-end gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setIsDeleteConfirmOpen(false)}
+              >
+                Batal
+              </Button>
+              <Button
+                onClick={confirmDeleteAgenda}
+                className="bg-red-600 hover:bg-red-700 text-white"
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Ya, Hapus
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

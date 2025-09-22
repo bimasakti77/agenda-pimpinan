@@ -28,18 +28,38 @@
 }
 
 .rbc-toolbar button:active {
-  background: #d1d5db;
+  background: #1e40af !important;
+  border-color: #1e40af !important;
+  color: white !important;
+}
+
+.rbc-btn-group button:active {
+  background: #1e40af !important;
+  border-color: #1e40af !important;
+  color: white !important;
 }
 
 .rbc-toolbar button.rbc-active {
-  background: #3b82f6;
-  border-color: #3b82f6;
-  color: white;
+  background: #1e40af !important;
+  border-color: #1e40af !important;
+  color: white !important;
 }
 
 .rbc-toolbar button.rbc-active:hover {
-  background: #2563eb;
-  border-color: #2563eb;
+  background: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
+}
+
+/* Force active state styling */
+.rbc-btn-group button.rbc-active {
+  background: #1e40af !important;
+  border-color: #1e40af !important;
+  color: white !important;
+}
+
+.rbc-btn-group button.rbc-active:hover {
+  background: #1d4ed8 !important;
+  border-color: #1d4ed8 !important;
 }
 
 /* View buttons */

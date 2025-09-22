@@ -18,13 +18,13 @@ export const useTokenManager = () => {
   const [state, setState] = useState<TokenManagerState>({
     isAuthenticated: false,
     isLoading: true,
+    user: null,
     tokenCountdown: { accessToken: 0, refreshToken: 0 }
   });
 
   const [toastShown, setToastShown] = useState<{
-    accessTokenWarning: boolean;
     refreshTokenWarning: boolean;
-  }>({ accessTokenWarning: false, refreshTokenWarning: false });
+  }>({ refreshTokenWarning: false });
 
   const calculateTokenCountdown = useCallback(() => {
     const accessToken = getStoredToken();
@@ -85,7 +85,7 @@ export const useTokenManager = () => {
         const refreshSuccess = await refreshAccessToken();
         if (refreshSuccess) {
           // Reset toast flags for new tokens
-          setToastShown({ accessTokenWarning: false, refreshTokenWarning: false });
+          setToastShown({ refreshTokenWarning: false });
           calculateTokenCountdown(); // Recalculate after refresh
         } else {
           clearAuthData();
@@ -94,17 +94,7 @@ export const useTokenManager = () => {
         return;
       }
 
-      // Show warnings only once
-      if (accessTimeLeft === 10 && !toastShown.accessTokenWarning) {
-        toast("⚠️ Access token akan expired dalam 10 detik!", {
-          duration: 3000,
-          style: {
-            background: '#f59e0b',
-            color: '#fff',
-          },
-        });
-        setToastShown(prev => ({ ...prev, accessTokenWarning: true }));
-      }
+      // Access token warning removed - auto refresh will handle expiration silently
       
       if (refreshTimeLeft === 5 && !toastShown.refreshTokenWarning) {
         toast.error("🚨 Refresh token akan expired dalam 5 detik! Aplikasi akan redirect ke login.", {

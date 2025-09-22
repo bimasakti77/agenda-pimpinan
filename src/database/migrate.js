@@ -82,6 +82,14 @@ const migrations = [
         FOR EACH ROW
         EXECUTE FUNCTION update_updated_at_column();
     `
+  },
+  {
+    name: 'add_attendance_status_to_agenda',
+    query: `
+      ALTER TABLE agenda 
+      ADD COLUMN IF NOT EXISTS attendance_status VARCHAR(20) 
+      CHECK (attendance_status IN ('attending', 'not_attending', 'represented'));
+    `
   }
 ];
 

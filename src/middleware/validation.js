@@ -68,7 +68,7 @@ const schemas = {
   createAgenda: Joi.object({
     title: Joi.string().min(3).max(200).required(),
     description: Joi.string().max(1000).optional(),
-    date: Joi.date().required(),
+    date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).required(),
     start_time: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
     end_time: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
     location: Joi.string().max(200).optional(),
@@ -76,13 +76,14 @@ const schemas = {
     status: Joi.string().valid('scheduled', 'in_progress', 'completed', 'cancelled').optional(),
     priority: Joi.string().valid('low', 'medium', 'high').optional(),
     category: Joi.string().max(50).optional(),
-    notes: Joi.string().max(1000).optional()
+    notes: Joi.string().max(1000).optional(),
+    attendance_status: Joi.string().valid('attending', 'not_attending', 'represented').optional()
   }),
 
   updateAgenda: Joi.object({
     title: Joi.string().min(3).max(200).optional(),
     description: Joi.string().max(1000).optional(),
-    date: Joi.date().optional(),
+    date: Joi.string().pattern(/^\d{4}-\d{2}-\d{2}$/).optional(),
     start_time: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
     end_time: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
     location: Joi.string().max(200).optional(),
@@ -90,7 +91,8 @@ const schemas = {
     status: Joi.string().valid('scheduled', 'in_progress', 'completed', 'cancelled').optional(),
     priority: Joi.string().valid('low', 'medium', 'high').optional(),
     category: Joi.string().max(50).optional(),
-    notes: Joi.string().max(1000).optional()
+    notes: Joi.string().max(1000).optional(),
+    attendance_status: Joi.string().valid('attending', 'not_attending', 'represented').optional()
   }),
 
   // Query validation schemas

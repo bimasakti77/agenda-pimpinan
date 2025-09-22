@@ -14,6 +14,7 @@ class Agenda {
     this.priority = data.priority;
     this.category = data.category;
     this.notes = data.notes;
+    this.attendance_status = data.attendance_status;
     this.created_by = data.created_by;
     this.updated_by = data.updated_by;
     this.created_at = data.created_at;
@@ -34,21 +35,22 @@ class Agenda {
       priority = 'medium',
       category,
       notes,
+      attendance_status,
       created_by
     } = agendaData;
     
     const query = `
       INSERT INTO agenda (
         title, description, date, start_time, end_time, location,
-        attendees, status, priority, category, notes, created_by
+        attendees, status, priority, category, notes, attendance_status, created_by
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
       RETURNING *
     `;
     
     const values = [
       title, description, date, start_time, end_time, location,
-      JSON.stringify(attendees), status, priority, category, notes, created_by
+      JSON.stringify(attendees), status, priority, category, notes, attendance_status, created_by
     ];
     
     const result = await pool.query(query, values);
@@ -233,7 +235,7 @@ class Agenda {
   async update(updateData, updated_by) {
     const allowedFields = [
       'title', 'description', 'date', 'start_time', 'end_time',
-      'location', 'attendees', 'status', 'priority', 'category', 'notes'
+      'location', 'attendees', 'status', 'priority', 'category', 'notes', 'attendance_status'
     ];
     
     const updates = [];
@@ -356,6 +358,7 @@ class Agenda {
       priority: this.priority,
       category: this.category,
       notes: this.notes,
+      attendance_status: this.attendance_status,
       created_by: this.created_by,
       updated_by: this.updated_by,
       created_at: this.created_at,

@@ -126,9 +126,6 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
         .map(attendee => attendee.trim())
         .filter(attendee => attendee.length > 0);
 
-      // Convert date string to Date object (ensure it's in local timezone)
-      const agendaDate = new Date(formData.date + 'T00:00:00');
-      
       // Convert time format from HH:MM:SS to HH:MM if needed
       const formatTime = (time: string) => {
         if (time.includes(':')) {
@@ -141,13 +138,17 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
       const agendaData = {
         title: formData.title.trim(),
         description: formData.description.trim(),
-        date: agendaDate,
+        date: formData.date, // Send as string to avoid timezone issues
         start_time: formatTime(formData.start_time),
         end_time: formatTime(formData.end_time),
         location: formData.location.trim(),
         priority: formData.priority,
         attendees: attendeesArray,
-        status: "scheduled" // Changed from "pending" to "scheduled"
+        // REMARK: Status default untuk backward compatibility dengan backend
+        // Status acara akan dihitung dinamis di frontend berdasarkan waktu agenda
+        // Default ini hanya untuk memastikan backend tidak error dan database schema tetap konsisten
+        // Status yang ditampilkan di UI tetap menggunakan perhitungan real-time
+        status: "scheduled" // Default untuk compatibility, akan di-override di frontend
       };
 
       console.log("Sending agenda data:", agendaData);

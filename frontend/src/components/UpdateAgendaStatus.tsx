@@ -78,6 +78,7 @@ export default function UpdateAgendaStatus({
       newErrors.representative = "Nama perwakilan harus diisi";
     }
 
+    console.log("Validation errors:", newErrors); // Debug log
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -86,8 +87,21 @@ export default function UpdateAgendaStatus({
     e.preventDefault();
     
     if (!validateForm()) {
-      toast.error("Mohon perbaiki error yang ada", {
-        duration: 3000,
+      // Get specific error messages
+      const errorMessages = [];
+      if (errors.attendanceStatus) errorMessages.push(errors.attendanceStatus);
+      if (errors.reason) errorMessages.push(errors.reason);
+      if (errors.representative) errorMessages.push(errors.representative);
+      
+      const errorMessage = errorMessages.length > 0 
+        ? errorMessages.join(', ') 
+        : "Mohon perbaiki error yang ada";
+        
+      console.log("Error messages to display:", errorMessages); // Debug log
+      console.log("Final error message:", errorMessage); // Debug log
+        
+      toast.error(errorMessage, {
+        duration: 4000,
         style: {
           background: '#EF4444',
           color: '#fff',
@@ -106,12 +120,14 @@ export default function UpdateAgendaStatus({
 
       // Prepare update data
       let updateData: any = {
-        status: formData.attendanceStatus === "attending" ? "in_progress" : 
-                formData.attendanceStatus === "not_attending" ? "cancelled" : 
-                "scheduled"
+        // REMARK: Status acara tidak perlu diupdate di database karena akan dihitung dinamis
+        // berdasarkan waktu agenda (start_time, end_time) vs waktu server saat ini
+        // Status acara: scheduled (belum mulai), in_progress (sedang berlangsung), completed (selesai)
+        // Yang disimpan hanya attendance_status untuk tracking kehadiran user
+        attendance_status: formData.attendanceStatus // Status kehadiran user (attending, not_attending, represented)
       };
 
-      // Add notes based on status
+      // Add notes based on attendance status (bukan status acara)
       let notes = "";
       if (formData.attendanceStatus === "not_attending") {
         notes = `Tidak menghadiri - Alasan: ${formData.reason}`;
