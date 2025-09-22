@@ -9,7 +9,8 @@ import CalendarView from "@/components/CalendarView";
 import UserFilter from "@/components/UserFilter";
 import Sidebar from "@/components/Sidebar";
 import ProfileDropdown from "@/components/ProfileDropdown";
-import { Calendar } from "lucide-react";
+import AddAgendaForm from "@/components/AddAgendaForm";
+import { Calendar, Plus } from "lucide-react";
 
 interface Agenda {
   id: number;
@@ -36,6 +37,7 @@ export default function CalendarPage() {
   const [hasSelectedUser, setHasSelectedUser] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [currentView, setCurrentView] = useState("calendar");
+  const [isAddAgendaOpen, setIsAddAgendaOpen] = useState(false);
 
   const { isAuthenticated, isLoading: tokenLoading } = useTokenManager();
 
@@ -137,6 +139,19 @@ export default function CalendarPage() {
       // Already on calendar page, do nothing
     } else if (view === "users") {
       window.location.href = "/users";
+    }
+  };
+
+  const handleAddAgenda = () => {
+    setIsAddAgendaOpen(true);
+  };
+
+  const handleAddAgendaSuccess = () => {
+    // Refresh the agendas list
+    if (user?.role === 'superadmin') {
+      loadAgendas(selectedUserId);
+    } else {
+      loadAgendas();
     }
   };
 
@@ -245,6 +260,10 @@ export default function CalendarPage() {
                     agendas={agendas || []}
                     isLoading={isLoading}
                     selectedUserName={selectedUserName}
+                    userRole={user?.role}
+                    onAddAgenda={handleAddAgenda}
+                    currentUser={user}
+                    onAgendaUpdate={handleAddAgendaSuccess}
                   />
                 </div>
               )}
@@ -252,6 +271,14 @@ export default function CalendarPage() {
           </main>
         </div>
       </div>
+
+      {/* Add Agenda Form Modal */}
+      <AddAgendaForm
+        isOpen={isAddAgendaOpen}
+        onClose={() => setIsAddAgendaOpen(false)}
+        onSuccess={handleAddAgendaSuccess}
+        user={user}
+      />
     </div>
   );
 }

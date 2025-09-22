@@ -195,3 +195,10 @@ $RECYCLE.BIN/
 
 # Windows shortcuts
 *.lnk
+
+# Ensure assets are tracked (explicitly include these folders)
+!frontend/public/assets/
+!frontend/public/assets/icons/
+!frontend/public/assets/images/
+!frontend/public/assets/logos/
+!frontend/public/assets/fonts/

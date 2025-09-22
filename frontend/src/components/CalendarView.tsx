@@ -8,6 +8,8 @@ import "../app/calendar.css";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Plus, UserCheck } from "lucide-react";
+import UpdateAgendaStatus from "./UpdateAgendaStatus";
 
 // Setup moment localizer
 const localizer = momentLocalizer(moment);
@@ -38,11 +40,20 @@ interface CalendarViewProps {
   agendas: Agenda[];
   isLoading: boolean;
   selectedUserName?: string;
+  userRole?: string;
+  onAddAgenda?: () => void;
+  currentUser?: {
+    id: number;
+    full_name: string;
+    role: string;
+  } | null;
+  onAgendaUpdate?: () => void;
 }
 
-export default function CalendarView({ agendas, isLoading, selectedUserName }: CalendarViewProps) {
+export default function CalendarView({ agendas, isLoading, selectedUserName, userRole, onAddAgenda, currentUser, onAgendaUpdate }: CalendarViewProps) {
   const [selectedEvent, setSelectedEvent] = useState<Agenda | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isStatusUpdateOpen, setIsStatusUpdateOpen] = useState(false);
   const [currentView, setCurrentView] = useState(Views.MONTH);
   const [currentDate, setCurrentDate] = useState(new Date());
 
@@ -144,6 +155,18 @@ export default function CalendarView({ agendas, isLoading, selectedUserName }: C
   const handleSelectEvent = (event: CalendarEvent) => {
     setSelectedEvent(event.resource);
     setIsModalOpen(true);
+  };
+
+  // Handle status update
+  const handleStatusUpdate = () => {
+    setIsStatusUpdateOpen(true);
+  };
+
+  const handleStatusUpdateSuccess = () => {
+    setIsStatusUpdateOpen(false);
+    if (onAgendaUpdate) {
+      onAgendaUpdate();
+    }
   };
 
   // Handle date selection (for future: add new agenda)
@@ -314,24 +337,37 @@ export default function CalendarView({ agendas, isLoading, selectedUserName }: C
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="flex flex-wrap gap-4 text-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-red-500 rounded"></div>
-          <span>Prioritas Tinggi</span>
+      {/* Legend and Add Button */}
+      <div className="flex justify-between items-center">
+        <div className="flex flex-wrap gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-red-500 rounded"></div>
+            <span>Prioritas Tinggi</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-orange-500 rounded"></div>
+            <span>Prioritas Sedang</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-green-500 rounded"></div>
+            <span>Prioritas Rendah</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-blue-500 rounded"></div>
+            <span>Default</span>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-orange-500 rounded"></div>
-          <span>Prioritas Sedang</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-green-500 rounded"></div>
-          <span>Prioritas Rendah</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-blue-500 rounded"></div>
-          <span>Default</span>
-        </div>
+        
+        {/* Add Agenda Button - Only show for regular users */}
+        {userRole === 'user' && onAddAgenda && (
+          <Button 
+            onClick={onAddAgenda}
+            className="flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white border border-gray-600"
+          >
+            <Plus className="h-4 w-4" />
+            Tambah Agenda
+          </Button>
+        )}
       </div>
 
       {/* Calendar */}
@@ -454,10 +490,37 @@ export default function CalendarView({ agendas, isLoading, selectedUserName }: C
                   </CardContent>
                 </Card>
               )}
+
+              {/* Update Status Button - Only show for regular users */}
+              {userRole === 'user' && currentUser && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Aksi</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Button 
+                      onClick={handleStatusUpdate}
+                      className="w-full flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white"
+                    >
+                      <UserCheck className="h-4 w-4" />
+                      Update Status Kehadiran
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Update Status Modal */}
+      <UpdateAgendaStatus
+        isOpen={isStatusUpdateOpen}
+        onClose={() => setIsStatusUpdateOpen(false)}
+        onSuccess={handleStatusUpdateSuccess}
+        agenda={selectedEvent}
+        currentUser={currentUser || null}
+      />
     </div>
   );
 }
