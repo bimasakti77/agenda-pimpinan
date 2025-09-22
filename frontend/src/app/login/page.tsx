@@ -130,7 +130,7 @@ export default function LoginPage() {
               className="h-16 w-auto"
             />
           </div>
-          <CardTitle className="text-2xl font-bold text-center">Login</CardTitle>
+          <CardTitle className="text-2xl font-bold text-center">Agenda Pimpinan</CardTitle>
           <CardDescription className="text-center">
             Masuk ke sistem Agenda Pimpinan<br />
             <span className="text-sm text-gray-500">Kementerian Hukum RI</span>
