@@ -8,22 +8,25 @@ interface StatsCardsProps {
   thisMonthAgendas: number;
   totalUsers: number;
   pendingAgendas: number;
+  userRole?: string;
 }
 
 export default function StatsCards({ 
   totalAgendas, 
   thisMonthAgendas, 
   totalUsers, 
-  pendingAgendas 
+  pendingAgendas,
+  userRole = 'admin'
 }: StatsCardsProps) {
-  const stats = [
+  // Define all possible stats
+  const allStats = [
     {
       title: "Total Agenda",
       value: totalAgendas,
       icon: Calendar,
       color: "text-blue-600",
       bgColor: "bg-blue-50",
-      description: "Semua agenda yang dibuat"
+      description: userRole === 'user' ? "Agenda milik Anda" : "Semua agenda yang dibuat"
     },
     {
       title: "Agenda Bulan Ini",
@@ -31,7 +34,7 @@ export default function StatsCards({
       icon: TrendingUp,
       color: "text-green-600",
       bgColor: "bg-green-50",
-      description: "Agenda bulan September 2025"
+      description: userRole === 'user' ? "Agenda Anda bulan ini" : "Agenda bulan September 2025"
     },
     {
       title: "Total Users",
@@ -51,8 +54,17 @@ export default function StatsCards({
     }
   ];
 
+  // Filter stats based on user role
+  const stats = userRole === 'user' 
+    ? allStats.slice(0, 2) // Only show first 2 cards for regular users
+    : allStats; // Show all cards for admin/superadmin
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+    <div className={`grid grid-cols-1 gap-6 mb-8 ${
+      userRole === 'user' 
+        ? 'md:grid-cols-2' 
+        : 'md:grid-cols-2 lg:grid-cols-4'
+    }`}>
       {stats.map((stat, index) => {
         const Icon = stat.icon;
         return (

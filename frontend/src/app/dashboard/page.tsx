@@ -59,26 +59,37 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const token = getStoredToken();
-    const user = getStoredUser();
+    const userData = getStoredUser();
 
-    if (!token || !user) {
+    if (!token || !userData) {
       window.location.href = "/login";
       return;
     }
 
-    setUser(user);
+    setUser(userData);
     loadChartData();
-    loadDashboardStats();
     loadRecentAgendas();
     setIsLoading(false);
   }, []);
 
+  // Load dashboard stats when user data is available
+  useEffect(() => {
+    if (user) {
+      loadDashboardStats();
+    }
+  }, [user]);
+
   const loadDashboardStats = async () => {
     try {
       const token = getStoredToken();
-      if (!token) return;
+      if (!token || !user) return;
 
-      const response = await fetch("http://localhost:3000/api/agenda/stats/dashboard", {
+      // For regular users, filter by their user ID
+      const url = user.role === 'user' 
+        ? `http://localhost:3000/api/agenda/stats/dashboard?user_id=${user.id}`
+        : "http://localhost:3000/api/agenda/stats/dashboard";
+
+      const response = await fetch(url, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -294,6 +305,7 @@ export default function DashboardPage() {
                   thisMonthAgendas={stats.thisMonthAgendas}
                   totalUsers={stats.totalUsers}
                   pendingAgendas={stats.pendingAgendas}
+                  userRole={user?.role}
                 />
 
                 {/* Charts */}

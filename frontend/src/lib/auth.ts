@@ -11,13 +11,17 @@ export interface User {
 }
 
 export const clearAuthData = () => {
-  localStorage.removeItem("accessToken");
-  localStorage.removeItem("refreshToken");
-  localStorage.removeItem("user");
+  if (typeof window !== 'undefined' && window.localStorage) {
+    localStorage.removeItem("accessToken");
+    localStorage.removeItem("refreshToken");
+    localStorage.removeItem("user");
+  }
 };
 
 export const getStoredUser = (): User | null => {
   try {
+    if (typeof window === 'undefined' || !window.localStorage) return null;
+    
     const userData = localStorage.getItem("user");
     if (!userData) return null;
     
@@ -44,10 +48,12 @@ export const getStoredUser = (): User | null => {
 };
 
 export const getStoredToken = (): string | null => {
+  if (typeof window === 'undefined' || !window.localStorage) return null;
   return localStorage.getItem("accessToken");
 };
 
 export const getStoredRefreshToken = (): string | null => {
+  if (typeof window === 'undefined' || !window.localStorage) return null;
   return localStorage.getItem("refreshToken");
 };
 
@@ -76,8 +82,10 @@ export const refreshAccessToken = async (): Promise<boolean> => {
 
     if (response.ok) {
       const data = await response.json();
-      localStorage.setItem("accessToken", data.data.accessToken);
-      localStorage.setItem("refreshToken", data.data.refreshToken);
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem("accessToken", data.data.accessToken);
+        localStorage.setItem("refreshToken", data.data.refreshToken);
+      }
       return true;
     } else {
       clearAuthData();

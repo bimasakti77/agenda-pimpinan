@@ -1,6 +1,7 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { getStoredUser } from "@/lib/auth";
 import toast from "react-hot-toast";
 
@@ -17,11 +18,30 @@ export default function RoleGuard({
   fallbackComponent,
   redirectTo = "/dashboard" 
 }: RoleGuardProps) {
-  const user = getStoredUser();
+  const router = useRouter();
+  const [isClient, setIsClient] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    setIsClient(true);
+    const userData = getStoredUser();
+    setUser(userData);
+    setIsLoading(false);
+  }, []);
+
+  // Show loading while checking authentication
+  if (!isClient || isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   // If no user data, redirect to login
   if (!user) {
-    window.location.href = "/login";
+    router.push("/login");
     return null;
   }
 
@@ -43,7 +63,7 @@ export default function RoleGuard({
 
     // Redirect after a short delay to show the toast
     setTimeout(() => {
-      window.location.href = redirectTo;
+      router.push(redirectTo);
     }, 1000);
 
     return (
