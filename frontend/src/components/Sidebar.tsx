@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Calendar, BarChart3, Users, LogOut, Menu, X } from "lucide-react";
+import toast, { Toaster } from "react-hot-toast";
 
 interface SidebarProps {
   user: {
@@ -42,8 +44,46 @@ export default function Sidebar({ user, onLogout, currentView, onViewChange }: S
     }
   ].filter(item => !user || item.roles.includes(user.role));
 
+  // Enhanced click handler with role checking
+  const handleMenuClick = (itemId: string) => {
+    // Get the menu item to check its required roles
+    const menuItem = menuItems.find(item => item.id === itemId);
+    
+    if (!menuItem) {
+      console.error(`Menu item with id "${itemId}" not found`);
+      return;
+    }
+
+    // Check if user has required role for this menu item
+    if (user && !menuItem.roles.includes(user.role)) {
+      toast.error("Anda tidak memiliki izin untuk mengakses halaman ini", {
+        duration: 3000,
+        style: {
+          background: '#EF4444',
+          color: '#fff',
+        },
+      });
+      return;
+    }
+
+    // If role check passes, proceed with navigation
+    onViewChange(itemId);
+  };
+
   return (
-    <div className={`bg-gray-900 text-white transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} min-h-screen flex flex-col fixed left-0 top-0 z-40`}>
+    <>
+      <Toaster 
+        position="top-right"
+        toastOptions={{
+          duration: 3000,
+          style: {
+            borderRadius: '8px',
+            fontSize: '14px',
+            fontWeight: '500',
+          },
+        }}
+      />
+      <div className={`bg-gray-900 text-white transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} min-h-screen flex flex-col fixed left-0 top-0 z-40`}>
       {/* Header */}
       <div className="p-4 border-b border-gray-700">
         <div className="flex items-center justify-between">
@@ -113,11 +153,16 @@ export default function Sidebar({ user, onLogout, currentView, onViewChange }: S
           <Card className="bg-gray-800 border-gray-700">
             <CardContent className="p-3">
               <div className="flex items-center space-x-3">
-                <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
-                  <span className="text-sm font-semibold">
-                    {user.full_name.split(' ').map(n => n[0]).join('').toUpperCase()}
-                  </span>
-                </div>
+                <Avatar className="h-10 w-10 border-2 border-white">
+                  <AvatarImage src="/assets/logos/logokumham.png" alt="Logo Kementerian" />
+                  <AvatarFallback className="bg-white">
+                    <img 
+                      src="/assets/logos/logokumham.png" 
+                      alt="Logo Kementerian" 
+                      className="h-full w-full object-contain"
+                    />
+                  </AvatarFallback>
+                </Avatar>
                 <div>
                   <p className="font-medium text-white">{user.full_name}</p>
                   <p className="text-xs text-gray-400 capitalize">{user.role}</p>
@@ -142,7 +187,7 @@ export default function Sidebar({ user, onLogout, currentView, onViewChange }: S
                       ? 'bg-gray-700 text-white' 
                       : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                   }`}
-                  onClick={() => onViewChange(item.id)}
+                  onClick={() => handleMenuClick(item.id)}
                 >
                   <Icon className={`h-5 w-5 ${isCollapsed ? '' : 'mr-3'}`} />
                   {!isCollapsed && (
@@ -174,6 +219,7 @@ export default function Sidebar({ user, onLogout, currentView, onViewChange }: S
           )}
         </Button>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

@@ -89,7 +89,7 @@ export default function ProfileDropdown({ user, onLogout }: ProfileDropdownProps
         >
           <Avatar className="h-8 w-8">
             <AvatarImage src="/assets/logos/logokumham.png" alt={user.full_name} />
-            <AvatarFallback className="bg-blue-500 text-white text-sm font-medium">
+            <AvatarFallback className="text-white text-sm font-medium" style={{ backgroundColor: '#1f6fff' }}>
               <img 
                 src="/assets/logos/logokumham.png" 
                 alt="Logo Kementerian" 
@@ -109,11 +109,11 @@ export default function ProfileDropdown({ user, onLogout }: ProfileDropdownProps
         <Card className="border-0 shadow-lg">
           <CardContent className="p-0">
             {/* Profile Header */}
-            <div className="p-6 bg-gradient-to-r from-blue-500 to-blue-600 text-white">
+            <div className="p-6 bg-gray-800 text-white">
               <div className="flex items-center space-x-4">
                 <Avatar className="h-16 w-16 border-2 border-white">
                   <AvatarImage src="/assets/logos/logokumham.png" alt={user.full_name} />
-                  <AvatarFallback className="bg-white text-blue-500 text-lg font-bold">
+                  <AvatarFallback className="bg-white text-gray-800 text-lg font-bold">
                     <img 
                       src="/assets/logos/logokumham.png" 
                       alt="Logo Kementerian" 
@@ -123,10 +123,10 @@ export default function ProfileDropdown({ user, onLogout }: ProfileDropdownProps
                 </Avatar>
                 <div className="flex-1">
                   <h3 className="text-lg font-semibold">{user.full_name}</h3>
-                  <p className="text-blue-100 text-sm">@{user.username}</p>
+                  <p className="text-gray-300 text-sm">@{user.username}</p>
                   <div className="flex items-center mt-1">
                     <span className="text-lg mr-1">{getRoleIcon(user.role)}</span>
-                    <span className="text-sm text-blue-100">{getRoleLabel(user.role)}</span>
+                    <span className="text-sm text-gray-300">{getRoleLabel(user.role)}</span>
                   </div>
                 </div>
               </div>

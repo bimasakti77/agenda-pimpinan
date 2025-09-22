@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useApi } from '@/hooks/useApi';
 import { apiService } from '@/services/apiService';
 import UserLayout from '@/components/UserLayout';
+import RoleGuard from '@/components/RoleGuard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -141,31 +142,36 @@ export default function UsersPage() {
 
   if (loading) {
     return (
-      <UserLayout title="User Management" description="Kelola pengguna sistem">
-        <div className="flex items-center justify-center py-12">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-        </div>
-      </UserLayout>
+      <RoleGuard requiredRoles={['superadmin']}>
+        <UserLayout title="User Management" description="Kelola pengguna sistem">
+          <div className="flex items-center justify-center py-12">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          </div>
+        </UserLayout>
+      </RoleGuard>
     );
   }
 
   if (error) {
     return (
-      <UserLayout title="User Management" description="Kelola pengguna sistem">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
-          <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Users</h3>
-          <p className="text-red-600 mb-4">{error}</p>
-          <Button onClick={refetch} variant="outline">
-            Try Again
-          </Button>
-        </div>
-      </UserLayout>
+      <RoleGuard requiredRoles={['superadmin']}>
+        <UserLayout title="User Management" description="Kelola pengguna sistem">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+            <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Users</h3>
+            <p className="text-red-600 mb-4">{error}</p>
+            <Button onClick={refetch} variant="outline">
+              Try Again
+            </Button>
+          </div>
+        </UserLayout>
+      </RoleGuard>
     );
   }
 
   return (
-    <UserLayout title="User Management" description="Kelola pengguna sistem">
-      <div className="space-y-6">
+    <RoleGuard requiredRoles={['superadmin']}>
+      <UserLayout title="User Management" description="Kelola pengguna sistem">
+        <div className="space-y-6">
         {/* Header with Add Button */}
         <div className="flex justify-between items-center">
           <div>
@@ -401,5 +407,6 @@ export default function UsersPage() {
           }}
         />
       </UserLayout>
+    </RoleGuard>
     );
   }

@@ -57,8 +57,21 @@ export default function UserLayout({ children, title = "User Management", descri
     } else if (view === "calendar") {
       window.location.href = "/calendar";
     } else if (view === "users") {
-      // Stay in users page
-      setCurrentView("users");
+      // Only allow if user has superadmin role
+      if (user.role === 'superadmin') {
+        setCurrentView("users");
+      } else {
+        // This should not happen due to sidebar filtering, but as a safety measure
+        toast.error("Anda tidak memiliki izin untuk mengakses halaman ini", {
+          duration: 3000,
+          style: {
+            background: '#EF4444',
+            color: '#fff',
+          },
+        });
+        // Redirect to dashboard
+        window.location.href = "/dashboard";
+      }
     }
   };
 
@@ -77,20 +90,8 @@ export default function UserLayout({ children, title = "User Management", descri
     return null;
   }
 
-  // Check if user has superadmin role
-  if (user.role !== 'superadmin') {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center max-w-md">
-          <h2 className="text-xl font-semibold text-red-800 mb-2">Akses Ditolak</h2>
-          <p className="text-red-600">
-            Anda tidak memiliki izin untuk mengakses halaman ini. 
-            Diperlukan role: <strong>superadmin</strong>
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Role checking is now handled at sidebar level
+  // This component assumes user already has proper role since they reached here
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
@@ -121,17 +122,17 @@ export default function UserLayout({ children, title = "User Management", descri
           <div className="px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-lg">
+                <div className="flex items-center justify-center w-10 h-10 rounded-lg" style={{ backgroundColor: '#1f6fff' }}>
                   {title?.toLowerCase().includes('users') || title?.toLowerCase().includes('user') ? (
-                    <Users className="h-6 w-6 text-blue-600" />
+                    <Users className="h-6 w-6 text-white" />
                   ) : title?.toLowerCase().includes('new') || title?.toLowerCase().includes('tambah') ? (
-                    <UserPlus className="h-6 w-6 text-blue-600" />
+                    <UserPlus className="h-6 w-6 text-white" />
                   ) : title?.toLowerCase().includes('edit') || title?.toLowerCase().includes('ubah') ? (
-                    <Edit className="h-6 w-6 text-blue-600" />
+                    <Edit className="h-6 w-6 text-white" />
                   ) : title?.toLowerCase().includes('detail') || title?.toLowerCase().includes('lihat') ? (
-                    <Eye className="h-6 w-6 text-blue-600" />
+                    <Eye className="h-6 w-6 text-white" />
                   ) : (
-                    <Users className="h-6 w-6 text-blue-600" />
+                    <Users className="h-6 w-6 text-white" />
                   )}
                 </div>
                 <div>
