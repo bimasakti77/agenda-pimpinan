@@ -605,12 +605,12 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
 
       {/* Event Detail Modal */}
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl w-[95vw] max-h-[90vh] overflow-y-auto sm:max-w-2xl md:max-w-3xl lg:max-w-4xl">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold">
+            <DialogTitle className="text-lg sm:text-xl font-bold">
               {selectedEvent?.title}
             </DialogTitle>
-            <DialogDescription>
+            <DialogDescription className="text-sm">
               Detail agenda untuk {selectedEvent && formatDate(selectedEvent.date)}
             </DialogDescription>
           </DialogHeader>
@@ -620,8 +620,8 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
               {/* Status Kehadiran Card - Main card with all information */}
               <Card className="border-l-4 border-l-blue-500">
                 <CardHeader className="bg-blue-50">
-                  <CardTitle className="text-lg text-blue-800 flex items-center gap-2">
-                    <UserCheck className="h-5 w-5" />
+                  <CardTitle className="text-base sm:text-lg text-blue-800 flex items-center gap-2">
+                    <UserCheck className="h-4 w-4 sm:h-5 sm:w-5" />
                     Status Kehadiran
                   </CardTitle>
                 </CardHeader>
@@ -629,13 +629,13 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
                   {/* Status Acara */}
                   <div>
                     <label className="font-medium text-gray-700 text-sm mb-2 block">Status Acara:</label>
-                    <div className="flex items-center gap-3">
-                      <span className={`px-4 py-2 rounded-lg text-sm font-medium ${getStatusColor(getAgendaStatus(selectedEvent))}`}>
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                      <span className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium ${getStatusColor(getAgendaStatus(selectedEvent))}`}>
                         {getAgendaStatus(selectedEvent) === 'scheduled' ? 'Terjadwal' : 
                          getAgendaStatus(selectedEvent) === 'in_progress' ? 'Sedang Berlangsung' :
                          getAgendaStatus(selectedEvent) === 'completed' ? 'Selesai' : 'Dibatalkan'}
                       </span>
-                      <span className={`px-3 py-1 rounded-full text-sm ${getPriorityColor(selectedEvent.priority)}`}>
+                      <span className={`px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm ${getPriorityColor(selectedEvent.priority)}`}>
                         Prioritas: {selectedEvent.priority}
                       </span>
                     </div>
@@ -646,7 +646,7 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
                     <label className="font-medium text-gray-700 text-sm mb-2 block">Status Kehadiran:</label>
                     <div className="flex items-center gap-3">
                       {selectedEvent.attendance_status ? (
-                        <span className={`px-4 py-2 rounded-lg text-sm font-medium border ${
+                        <span className={`px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium border ${
                           selectedEvent.attendance_status === 'attending' ? 'bg-green-100 text-green-800 border-green-200' :
                           selectedEvent.attendance_status === 'not_attending' ? 'bg-red-100 text-red-800 border-red-200' :
                           selectedEvent.attendance_status === 'represented' ? 'bg-yellow-100 text-yellow-800 border-yellow-200' :
@@ -657,15 +657,15 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
                            selectedEvent.attendance_status === 'represented' ? 'Diwakilkan' : 'Sudah Diupdate'}
                         </span>
                       ) : (
-                        <span className="px-4 py-2 rounded-lg text-sm font-medium bg-gray-100 text-gray-600 border border-gray-200">
+                        <span className="px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium bg-gray-100 text-gray-600 border border-gray-200">
                           Belum Diupdate
                         </span>
                       )}
                     </div>
                   </div>
 
-                  {/* Informasi Umum - Grid layout */}
-                  <div className="grid grid-cols-2 gap-4">
+                  {/* Informasi Umum - Responsive Grid layout */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                       <label className="font-medium text-gray-700 text-sm">Tanggal</label>
                       <p className="text-gray-900 text-sm">{formatDate(selectedEvent.date)}</p>
@@ -744,47 +744,48 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
               </Card>
 
 
-              {/* Action Buttons - Second for immediate access */}
-              {userRole === 'user' && currentUser && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Aksi</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <Button 
-                      onClick={handleStatusUpdate}
-                      className="w-full flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white"
-                    >
-                      <UserCheck className="h-4 w-4" />
-                      Update Status Kehadiran
-                    </Button>
-                    
-                    {/* Edit Button - Only show if agenda can be edited (same condition as delete) */}
-                    {selectedEvent && canDeleteAgenda(selectedEvent) && (
-                      <Button 
-                        onClick={handleEditAgenda}
-                        variant="outline"
-                        className="w-full flex items-center gap-2 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300"
-                      >
-                        <Edit className="h-4 w-4" />
-                        Edit Agenda
-                      </Button>
-                    )}
-                    
-                    {/* Delete Button - Only show if agenda date is today or future */}
-                    {selectedEvent && canDeleteAgenda(selectedEvent) && (
-                      <Button 
-                        onClick={handleDeleteAgenda}
-                        variant="outline"
-                        className="w-full flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50 hover:border-red-300"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Hapus Agenda
-                      </Button>
-                    )}
-                  </CardContent>
-                </Card>
-              )}
+              {/* Action Buttons - Responsive layout */}
+              <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4 border-t">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsModalOpen(false)}
+                  className="w-full sm:w-auto"
+                >
+                  Tutup
+                </Button>
+                {userRole === 'user' && currentUser && (
+                  <Button 
+                    onClick={handleStatusUpdate}
+                    className="w-full sm:w-auto flex items-center gap-2 bg-gray-800 hover:bg-gray-700 text-white"
+                  >
+                    <UserCheck className="h-4 w-4" />
+                    Update Status
+                  </Button>
+                )}
+                
+                {/* Edit Button - Only show if agenda can be edited */}
+                {selectedEvent && canDeleteAgenda(selectedEvent) && (
+                  <Button 
+                    onClick={handleEditAgenda}
+                    className="w-full sm:w-auto flex items-center gap-2 text-blue-600 border-blue-200 hover:bg-blue-50 hover:border-blue-300"
+                  >
+                    <Edit className="h-4 w-4" />
+                    Edit Agenda
+                  </Button>
+                )}
+                
+                {/* Delete Button - Only show if agenda date is today or future */}
+                {selectedEvent && canDeleteAgenda(selectedEvent) && (
+                  <Button 
+                    onClick={handleDeleteAgenda}
+                    variant="destructive"
+                    className="w-full sm:w-auto flex items-center gap-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Hapus Agenda
+                  </Button>
+                )}
+              </div>
 
             </div>
           )}
