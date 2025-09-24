@@ -39,7 +39,7 @@ export default function UserFilter({ onUserSelect, selectedUserId }: UserFilterP
       const data = await apiService.get('/users', { limit: 100 });
       
       // Filter hanya user dengan role 'user'
-      const allUsers = data.data?.users || [];
+      const allUsers = data.users || [];
       const filteredUsers = allUsers.filter((user: User) => user.role === 'user');
       setUsers(filteredUsers);
       setError("");

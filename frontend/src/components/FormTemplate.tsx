@@ -52,8 +52,7 @@ export const FormTemplate: React.FC<FormTemplateProps> = ({
         delete dataToSend.updated_at;
       }
       
-      // Log the data being sent
-      console.log('Form data being sent:', dataToSend);
+      // Form data prepared for submission
       
       if (method === 'PUT') {
         result = await apiService.put(endpoint, dataToSend);

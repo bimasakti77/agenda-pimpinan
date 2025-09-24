@@ -110,7 +110,6 @@ router.post('/', authenticate, authorize('superadmin'), validate(schemas.createU
 // @access  Superadmin only
 router.put('/:id', authenticate, authorize('superadmin'), validate(schemas.updateUser), async (req, res, next) => {
   try {
-    console.log('PUT /api/users/:id - Request body:', req.body);
     const userService = require('../services/userService');
     const user = await userService.updateUser(req.params.id, req.body);
 

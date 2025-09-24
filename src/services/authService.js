@@ -102,26 +102,17 @@ class AuthService {
 
   // Login user
   async login(username, password) {
-    console.log('=== AUTH SERVICE LOGIN ===');
-    console.log('Login attempt with:', username);
-    
     // Find user by username or email
     let user = await User.findByUsername(username);
-    console.log('User found by username:', !!user);
     
     if (!user) {
       // Try to find by email if username not found
-      console.log('Trying to find by email...');
       user = await User.findByEmail(username);
-      console.log('User found by email:', !!user);
     }
     
     if (!user) {
-      console.log('No user found with username/email:', username);
       throw new Error('Invalid username/email or password');
     }
-    
-    console.log('User found:', user.username, user.email, user.role);
 
     // Check if user is active
     if (!user.is_active) {

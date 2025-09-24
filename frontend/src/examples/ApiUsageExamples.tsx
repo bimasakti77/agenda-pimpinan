@@ -288,7 +288,9 @@ export function AdvancedUsageExample() {
         API_ENDPOINTS.UPLOAD.DOCUMENT,
         file,
         (progress) => {
+          if (process.env.NODE_ENV === 'development') {
           console.log(`Upload progress: ${progress}%`);
+        }
         }
       );
       

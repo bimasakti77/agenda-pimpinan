@@ -95,7 +95,9 @@ const migrations = [
 
 async function runMigrations() {
   try {
-    console.log('Starting database migrations...');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Starting database migrations...');
+    }
     
     // Create migrations table if it doesn't exist
     await pool.query(`
@@ -113,16 +115,24 @@ async function runMigrations() {
     // Run pending migrations
     for (const migration of migrations) {
       if (!executedNames.includes(migration.name)) {
-        console.log(`Running migration: ${migration.name}`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`Running migration: ${migration.name}`);
+        }
         await pool.query(migration.query);
         await pool.query('INSERT INTO migrations (name) VALUES ($1)', [migration.name]);
-        console.log(`✓ Migration ${migration.name} completed`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`✓ Migration ${migration.name} completed`);
+        }
       } else {
-        console.log(`- Migration ${migration.name} already executed`);
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`- Migration ${migration.name} already executed`);
+        }
       }
     }
     
-    console.log('All migrations completed successfully!');
+    if (process.env.NODE_ENV === 'development') {
+      console.log('All migrations completed successfully!');
+    }
   } catch (error) {
     console.error('Migration failed:', error);
     process.exit(1);
