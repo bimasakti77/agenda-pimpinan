@@ -12,6 +12,7 @@ const { notFound } = require('./middleware/notFound');
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const agendaRoutes = require('./routes/agendaRoutes');
+const configRoutes = require('./routes/configRoutes');
 
 const app = express();
 

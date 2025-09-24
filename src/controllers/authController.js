@@ -18,14 +18,23 @@ class AuthController {
   // Login user
   async login(req, res, next) {
     try {
+      console.log('=== AUTH CONTROLLER LOGIN ===');
+      console.log('Request body:', req.body);
+      
       const { username, password } = req.body;
+      console.log('Username:', username);
+      console.log('Password provided:', !!password);
+      
       const result = await authService.login(username, password);
+      console.log('Login successful, user:', result.user.username);
+      
       res.json({
         success: true,
         message: 'Login successful',
         data: result
       });
     } catch (error) {
+      console.error('Login error:', error.message);
       next(error);
     }
   }

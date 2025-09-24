@@ -9,6 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Clock, MapPin, Users, FileText, AlertCircle } from "lucide-react";
 import toast from "react-hot-toast";
+import { apiService } from "@/services/apiService";
+import { API_ENDPOINTS } from "@/services/apiEndpoints";
+import { getErrorMessage, logError, isValidationError } from "@/utils/errorHandler";
 
 interface AddAgendaFormProps {
   isOpen: boolean;
@@ -101,11 +104,58 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) {
-      toast.error("Mohon perbaiki error yang ada", {
-        duration: 3000,
+    // Validate form and get errors directly
+    const newErrors: Partial<AgendaFormData> = {};
+
+    if (!formData.title.trim()) {
+      newErrors.title = "Judul agenda harus diisi";
+    }
+
+    if (!formData.date) {
+      newErrors.date = "Tanggal harus diisi";
+    }
+
+    if (!formData.start_time) {
+      newErrors.start_time = "Waktu mulai harus diisi";
+    }
+
+    if (!formData.end_time) {
+      newErrors.end_time = "Waktu selesai harus diisi";
+    }
+
+    if (!formData.location.trim()) {
+      newErrors.location = "Lokasi harus diisi";
+    }
+
+    // Validate time logic
+    if (formData.start_time && formData.end_time) {
+      const startTime = new Date(`2000-01-01T${formData.start_time}`);
+      const endTime = new Date(`2000-01-01T${formData.end_time}`);
+      
+      if (endTime <= startTime) {
+        newErrors.end_time = "Waktu selesai harus setelah waktu mulai";
+      }
+    }
+
+    // Set errors in state
+    setErrors(newErrors);
+
+    // Check if there are validation errors
+    if (Object.keys(newErrors).length > 0) {
+      // Get specific error messages from the newErrors object
+      const errorMessages = [];
+      if (newErrors.title) errorMessages.push(newErrors.title);
+      if (newErrors.date) errorMessages.push(newErrors.date);
+      if (newErrors.start_time) errorMessages.push(newErrors.start_time);
+      if (newErrors.end_time) errorMessages.push(newErrors.end_time);
+      if (newErrors.location) errorMessages.push(newErrors.location);
+      
+      const errorMessage = errorMessages.join(', ');
+      
+      toast.error(errorMessage, {
+        duration: 4000,
         style: {
-          background: '#EF4444',
+          background: '#F59E0B', // Orange for validation errors
           color: '#fff',
         },
       });
@@ -151,36 +201,7 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
         status: "scheduled" // Default untuk compatibility, akan di-override di frontend
       };
 
-      console.log("Sending agenda data:", agendaData);
-      console.log("Form data before processing:", formData);
-
-      const response = await fetch("http://localhost:3000/api/agenda", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(agendaData),
-      });
-
-      if (response.status === 401) {
-        throw new Error("Sesi berakhir. Silakan login kembali.");
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("API Error:", errorData);
-        
-        // Handle validation errors specifically
-        if (errorData.errors && Array.isArray(errorData.errors)) {
-          const validationErrors = errorData.errors.map((err: any) => err.message).join(', ');
-          throw new Error(`Validation error: ${validationErrors}`);
-        }
-        
-        throw new Error(errorData.message || "Gagal menambahkan agenda");
-      }
-
-      const result = await response.json();
+      const result = await apiService.post(API_ENDPOINTS.AGENDA.CREATE, agendaData);
       
       toast.success("Agenda berhasil ditambahkan!", {
         duration: 3000,
@@ -208,11 +229,15 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
       onSuccess();
 
     } catch (error: any) {
-      console.error("Error adding agenda:", error);
-      toast.error(error.message || "Terjadi kesalahan saat menambahkan agenda", {
-        duration: 3000,
+      logError(error, 'AddAgendaForm');
+      
+      const errorMessage = getErrorMessage(error);
+      const isValidation = isValidationError(error);
+      
+      toast.error(errorMessage, {
+        duration: isValidation ? 4000 : 3000,
         style: {
-          background: '#EF4444',
+          background: isValidation ? '#F59E0B' : '#EF4444', // Orange for validation, red for other errors
           color: '#fff',
         },
       });

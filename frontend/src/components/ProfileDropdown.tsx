@@ -15,7 +15,6 @@ import {
   LogOut, 
   ChevronDown 
 } from "lucide-react";
-import toast from "react-hot-toast";
 import { User as UserType } from "@/lib/auth";
 
 interface User extends UserType {
@@ -32,17 +31,7 @@ export default function ProfileDropdown({ user, onLogout }: ProfileDropdownProps
   const [isOpen, setIsOpen] = useState(false);
 
   const handleLogout = () => {
-    toast.success("Logout berhasil! Sampai jumpa!", {
-      duration: 1500,
-      style: {
-        background: '#10B981',
-        color: '#fff',
-      },
-    });
-    
-    setTimeout(() => {
-      onLogout();
-    }, 1000);
+    onLogout();
   };
 
   const getRoleIcon = (role: string) => {

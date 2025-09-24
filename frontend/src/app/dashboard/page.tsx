@@ -5,13 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import toast, { Toaster } from "react-hot-toast";
-import { getStoredUser, getStoredToken, type User } from "@/lib/auth";
+import { getStoredUser, type User } from "@/lib/auth";
 import { useTokenManager } from "@/hooks/useTokenManager";
 import Sidebar from "@/components/Sidebar";
 import StatsCards from "@/components/StatsCards";
 import AgendaChart from "@/components/AgendaChart";
 import ProfileDropdown from "@/components/ProfileDropdown";
 import { BarChart3 } from "lucide-react";
+import { apiService } from "@/services/apiService";
+import { API_ENDPOINTS, buildEndpoint } from "@/services/apiEndpoints";
 
 interface Agenda {
   id: number;
@@ -59,95 +61,86 @@ export default function DashboardPage() {
   const { isAuthenticated, isLoading: tokenLoading } = useTokenManager();
 
   useEffect(() => {
-    const token = getStoredToken();
     const userData = getStoredUser();
 
-    if (!token || !userData) {
+    if (!userData) {
       window.location.href = "/login";
       return;
     }
 
     setUser(userData);
+    setIsLoading(false);
+    
+    // Load all data with userData directly
+    loadDashboardStatsWithUser(userData);
     loadChartData();
     loadRecentAgendas();
-    setIsLoading(false);
   }, []);
 
-  // Load dashboard stats when user data is available
-  useEffect(() => {
-    if (user) {
-      loadDashboardStats();
+  const loadDashboardStatsWithUser = async (userData: User) => {
+    try {
+      const data = await apiService.get('/agenda/stats/dashboard');
+      const statsData = data || {
+        totalAgendas: 0,
+        thisMonthAgendas: 0,
+        totalUsers: 0,
+        pendingAgendas: 0
+      };
+      setStats(statsData);
+    } catch (err: any) {
+      console.error("Error loading stats data:", err);
+      setStats({
+        totalAgendas: 0,
+        thisMonthAgendas: 0,
+        totalUsers: 0,
+        pendingAgendas: 0
+      });
     }
-  }, [user]);
+  };
 
   const loadDashboardStats = async () => {
-    try {
-      const token = getStoredToken();
-      if (!token || !user) return;
-
-      // For regular users, filter by their user ID
-      const url = user.role === 'user' 
-        ? `http://localhost:3000/api/agenda/stats/dashboard?user_id=${user.id}`
-        : "http://localhost:3000/api/agenda/stats/dashboard";
-
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Gagal memuat data statistik.");
-      }
-
-      const data = await response.json();
-      setStats(data.data);
-    } catch (err) {
-      console.error("Error loading stats data:", err);
-    }
+    if (!user) return;
+    return loadDashboardStatsWithUser(user);
   };
 
   const loadChartData = async () => {
     try {
-      const token = getStoredToken();
-      if (!token) return;
-
-      const response = await fetch("http://localhost:3000/api/agenda/stats/monthly", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Gagal memuat data chart.");
-      }
-
-      const data = await response.json();
-      setChartData(data.data);
-    } catch (err) {
+      const data = await apiService.get('/agenda/stats/monthly');
+      setChartData(data || []);
+    } catch (err: any) {
       console.error("Error loading chart data:", err);
+      setChartData([]);
     }
   };
 
   const loadRecentAgendas = async () => {
+    const endpoint = buildEndpoint('/agenda', {
+      limit: 5,
+      sort: 'created_at',
+      order: 'desc'
+    });
+    
     try {
-      const token = getStoredToken();
-      if (!token) return;
-
-      const response = await fetch("http://localhost:3000/api/agenda?limit=5&sort=created_at&order=desc", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Gagal memuat agenda terbaru.");
+      const result = await apiService.get(endpoint);
+      
+      // Handle different response structures
+      if (result) {
+        if (result.agenda && Array.isArray(result.agenda)) {
+          // Response has agenda property (correct structure)
+          setRecentAgendas(result.agenda);
+        } else if (Array.isArray(result)) {
+          // Response is directly an array
+          setRecentAgendas(result);
+        } else {
+          // Fallback: try to find agenda in the response
+          setRecentAgendas(result.agenda || []);
+        }
+      } else {
+        setRecentAgendas([]);
       }
-
-      const result = await response.json();
-      setRecentAgendas(result.data.agenda);
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error loading recent agendas:", err);
+      setRecentAgendas([]);
     }
   };
 
@@ -234,6 +227,7 @@ export default function DashboardPage() {
     }
   };
 
+
   if (tokenLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -245,7 +239,7 @@ export default function DashboardPage() {
     );
   }
 
-  if (!isAuthenticated || !user) {
+  if (!user) {
     return null;
   }
 

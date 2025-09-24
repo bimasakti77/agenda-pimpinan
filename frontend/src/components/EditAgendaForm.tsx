@@ -7,8 +7,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getStoredToken } from "@/lib/auth";
 import toast from "react-hot-toast";
+import { apiService } from "@/services/apiService";
+import { API_ENDPOINTS } from "@/services/apiEndpoints";
+import { getStoredToken } from "@/lib/auth";
 
 interface Agenda {
   id: number;
@@ -154,43 +156,7 @@ export default function EditAgendaForm({ isOpen, onClose, onSuccess, agenda }: E
         updateData.description = formData.description.trim();
       }
 
-      console.log("Updating agenda:", agenda.id, updateData);
-      console.log("Form data before processing:", formData);
-      console.log("Formatted times:", {
-        start_time: formatTime(formData.start_time),
-        end_time: formatTime(formData.end_time)
-      });
-
-      const response = await fetch(`http://localhost:3000/api/agenda/${agenda.id}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(updateData)
-      });
-
-      if (response.status === 401) {
-        toast.error("Sesi berakhir. Silakan login kembali.");
-        window.location.href = "/login";
-        return;
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("API Error Response:", errorData);
-        
-        // Handle validation errors specifically
-        if (errorData.errors && Array.isArray(errorData.errors)) {
-          const errorMessages = errorData.errors.map((err: any) => err.message).join(', ');
-          throw new Error(`Validation error: ${errorMessages}`);
-        }
-        
-        throw new Error(errorData.message || "Gagal mengupdate agenda");
-      }
-
-      const result = await response.json();
-      console.log("Update result:", result);
+      const result = await apiService.put(API_ENDPOINTS.AGENDA.UPDATE(agenda.id), updateData);
 
       toast.success("Agenda berhasil diupdate");
       onSuccess();

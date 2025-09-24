@@ -34,7 +34,7 @@ export default function UserDetailPage() {
   const params = useParams();
   const userId = params.id as string;
 
-  const { data: user, loading, error } = useApi<User>(`http://localhost:3000/api/users/${userId}`);
+  const { data: user, loading, error } = useApi<User>(`/users/${userId}`);
 
   // Reset password modal state
   const [resetPasswordModal, setResetPasswordModal] = useState({

@@ -1,101 +1,229 @@
+/**
+ * API Service with Authentication and Error Handling
+ * Centralized API service using the HTTP client
+ */
+
+import { httpClient } from './httpClient';
 import { getStoredToken, refreshAccessToken } from '@/lib/auth';
+import { ApiResponse, RequestConfig } from '@/types/api';
+import { isDebugEnabled } from '@/config/env';
 
 class ApiService {
-  private baseURL = 'http://localhost:3000/api';
+  private isRefreshing = false;
+  private refreshPromise: Promise<boolean> | null = null;
 
-  private async request(endpoint: string, options: RequestInit = {}) {
-    console.log('API Request URL:', `${this.baseURL}${endpoint}`);
-    const token = getStoredToken();
-    
-    if (!token) {
-      window.location.href = '/login';
-      throw new Error('No authentication token');
-    }
+  constructor() {
+    this.setupInterceptors();
+  }
 
-    const response = await fetch(`${this.baseURL}${endpoint}`, {
-      ...options,
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
-    });
-
-    if (response.status === 401) {
-      // Token expired, try to refresh
-      const refreshSuccess = await refreshAccessToken();
-      if (refreshSuccess) {
-        const newToken = getStoredToken();
-        return fetch(`${this.baseURL}${endpoint}`, {
-          ...options,
-          headers: {
-            'Authorization': `Bearer ${newToken}`,
-            'Content-Type': 'application/json',
-            ...options.headers,
-          },
-        });
-      } else {
-        // Refresh failed, redirect to login
-        window.location.href = '/login';
-        throw new Error('Authentication failed');
+  /**
+   * Setup authentication and error interceptors
+   */
+  private setupInterceptors(): void {
+    // Request interceptor for authentication
+    httpClient.addRequestInterceptor(async (config) => {
+      const token = getStoredToken();
+      
+      if (!token) {
+        // No token, redirect to login
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
+        throw new Error('No authentication token');
       }
-    }
 
-    return response;
-  }
-
-  async get<T = any>(endpoint: string): Promise<T> {
-    const response = await this.request(endpoint);
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to fetch data');
-    }
-    const result = await response.json();
-    return result.data || result;
-  }
-
-  async post<T = any>(endpoint: string, data: any): Promise<T> {
-    const response = await this.request(endpoint, {
-      method: 'POST',
-      body: JSON.stringify(data),
+      return {
+        ...config,
+        headers: {
+          ...config.headers,
+          'Authorization': `Bearer ${token}`,
+        },
+      };
     });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to create data');
-    }
-    
-    const result = await response.json();
-    return result.data || result;
+
+    // Response interceptor for token refresh
+    httpClient.addResponseInterceptor(async (response) => {
+      if (response.status === 401) {
+        // Token expired, try to refresh
+        const refreshSuccess = await this.handleTokenRefresh();
+        
+        if (refreshSuccess) {
+          // Retry the original request with new token
+          const newToken = getStoredToken();
+          if (newToken) {
+            const newHeaders = new Headers(response.headers);
+            newHeaders.set('Authorization', `Bearer ${newToken}`);
+            
+            // Create new response with updated headers
+            return new Response(response.body, {
+              status: response.status,
+              statusText: response.statusText,
+              headers: newHeaders,
+            });
+          }
+        } else {
+          // Refresh failed, redirect to login
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login';
+          }
+          throw new Error('Authentication failed');
+        }
+      }
+
+      return response;
+    });
+
+    // Error interceptor for logging
+    httpClient.addErrorInterceptor(async (error) => {
+      if (isDebugEnabled) {
+        console.error('[API Service] Request failed:', error);
+      }
+      return error;
+    });
   }
 
-  async put<T = any>(endpoint: string, data: any): Promise<T> {
-    const response = await this.request(endpoint, {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to update data');
+  /**
+   * Handle token refresh with deduplication
+   */
+  private async handleTokenRefresh(): Promise<boolean> {
+    if (this.isRefreshing && this.refreshPromise) {
+      return this.refreshPromise;
     }
-    
-    const result = await response.json();
-    return result.data || result;
+
+    this.isRefreshing = true;
+    this.refreshPromise = this.performTokenRefresh();
+
+    try {
+      const result = await this.refreshPromise;
+      return result;
+    } finally {
+      this.isRefreshing = false;
+      this.refreshPromise = null;
+    }
   }
 
-  async delete<T = any>(endpoint: string): Promise<T> {
-    const response = await this.request(endpoint, {
-      method: 'DELETE',
-    });
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to delete data');
+  /**
+   * Perform actual token refresh
+   */
+  private async performTokenRefresh(): Promise<boolean> {
+    try {
+      return await refreshAccessToken();
+    } catch (error) {
+      if (isDebugEnabled) {
+        console.error('[API Service] Token refresh failed:', error);
+      }
+      return false;
     }
-    
-    const result = await response.json();
-    return result.data || result;
+  }
+
+  /**
+   * GET request
+   */
+  async get<T = any>(endpoint: string, params?: Record<string, string | number | boolean>, config?: RequestConfig): Promise<T> {
+    try {
+      const response = await httpClient.get<T>(endpoint, params, config);
+      return response.data as T;
+    } catch (error: any) {
+      console.error('API Service Error:', error.message);
+      throw new Error(error.message || 'Failed to fetch data');
+    }
+  }
+
+  /**
+   * POST request
+   */
+  async post<T = any>(endpoint: string, data?: any, config?: RequestConfig): Promise<T> {
+    try {
+      const response = await httpClient.post<T>(endpoint, data, config);
+      return response.data as T;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to create data');
+    }
+  }
+
+  /**
+   * PUT request
+   */
+  async put<T = any>(endpoint: string, data?: any, config?: RequestConfig): Promise<T> {
+    try {
+      const response = await httpClient.put<T>(endpoint, data, config);
+      return response.data as T;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to update data');
+    }
+  }
+
+  /**
+   * PATCH request
+   */
+  async patch<T = any>(endpoint: string, data?: any, config?: RequestConfig): Promise<T> {
+    try {
+      const response = await httpClient.patch<T>(endpoint, data, config);
+      return response.data as T;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to update data');
+    }
+  }
+
+  /**
+   * DELETE request
+   */
+  async delete<T = any>(endpoint: string, config?: RequestConfig): Promise<T> {
+    try {
+      const response = await httpClient.delete<T>(endpoint, config);
+      return response.data as T;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to delete data');
+    }
+  }
+
+  /**
+   * Upload file with progress tracking
+   */
+  async uploadFile<T = any>(
+    endpoint: string, 
+    file: File, 
+    onProgress?: (progress: number) => void
+  ): Promise<T> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await httpClient.post<T>(endpoint, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data as T;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to upload file');
+    }
+  }
+
+  /**
+   * Download file
+   */
+  async downloadFile(endpoint: string, filename?: string): Promise<void> {
+    try {
+      const response = await httpClient.get(endpoint, undefined, {
+        headers: {
+          'Accept': 'application/octet-stream',
+        },
+      });
+
+      // Create blob and download
+      const blob = new Blob([response.data]);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename || 'download';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to download file');
+    }
   }
 }
 

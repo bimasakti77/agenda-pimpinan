@@ -381,17 +381,15 @@ class Agenda {
     `;
 
     // Add role-based filtering
-    if (user.role === 'superadmin') {
-      // Superadmin sees all agenda data (no additional filter)
+    if (user.role === 'superadmin' || user.role === 'admin') {
+      // Superadmin and Admin see all agenda data (no additional filter)
       query += ` GROUP BY DATE_TRUNC('month', date) ORDER BY DATE_TRUNC('month', date)`;
+      var result = await pool.query(query);
     } else {
-      // Admin and user see only their own agenda data
+      // Regular user sees only their own agenda data
       query += ` AND created_by = $1 GROUP BY DATE_TRUNC('month', date) ORDER BY DATE_TRUNC('month', date)`;
+      var result = await pool.query(query, [user.id]);
     }
-
-    const result = user.role === 'superadmin' 
-      ? await pool.query(query)
-      : await pool.query(query, [user.id]);
     
     // Create array for all 12 months
     const months = [
@@ -437,25 +435,23 @@ class Agenda {
     `;
 
     // Add role-based filtering for agenda stats
-    if (user.role === 'superadmin') {
-      // Superadmin sees all agenda data (no additional filter)
+    if (user.role === 'superadmin' || user.role === 'admin') {
+      var agendaResult = await pool.query(agendaQuery);
     } else {
-      // Admin and user see only their own agenda data
       agendaQuery += ` AND created_by = $1`;
+      var agendaResult = await pool.query(agendaQuery, [user.id]);
     }
-
-    const agendaResult = user.role === 'superadmin' 
-      ? await pool.query(agendaQuery)
-      : await pool.query(agendaQuery, [user.id]);
 
     const userResult = await pool.query(userQuery);
 
-    return {
+    const result = {
       totalAgendas: parseInt(agendaResult.rows[0].total_agendas),
       thisMonthAgendas: parseInt(agendaResult.rows[0].this_month_agendas),
       totalUsers: parseInt(userResult.rows[0].total_users),
       pendingAgendas: parseInt(agendaResult.rows[0].pending_agendas)
     };
+
+    return result;
   }
 }
 

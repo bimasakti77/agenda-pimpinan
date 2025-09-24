@@ -87,7 +87,7 @@ export default function UsersPage() {
   }, [debouncedSearch, filters.role, filters.is_active, filters.page, filters.limit]);
 
   const { data, loading, error, refetch } = useApi<UsersResponse>(
-    `http://localhost:3000/api/users?${queryParams}`,
+    `/users?${queryParams}`,
     { autoFetch: true }
   );
 

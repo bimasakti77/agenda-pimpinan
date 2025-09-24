@@ -19,7 +19,8 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("http://localhost:3000/api/auth/login", {
+      const { apiFetch } = await import('@/lib/apiUtils');
+      const response = await apiFetch('/auth/login', {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

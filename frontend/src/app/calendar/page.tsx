@@ -11,6 +11,8 @@ import Sidebar from "@/components/Sidebar";
 import ProfileDropdown from "@/components/ProfileDropdown";
 import AddAgendaForm from "@/components/AddAgendaForm";
 import { Calendar, Plus } from "lucide-react";
+import { apiService } from "@/services/apiService";
+import { buildEndpoint } from "@/services/apiEndpoints";
 
 interface Agenda {
   id: number;
@@ -68,42 +70,37 @@ export default function CalendarPage() {
     setIsLoading(true);
     setError("");
     try {
-      const token = getStoredToken();
-      if (!token) {
-        setError("Token tidak ditemukan.");
-        return;
-      }
-
-      let url = `http://localhost:3000/api/agenda?limit=100`;
+      const params: Record<string, any> = { limit: 100 };
+      
       if (userId) {
-        url += `&created_by=${userId}`;
+        params.created_by = userId;
       } else if (user?.role !== 'superadmin') {
-        url += `&created_by=${user?.id}`;
+        params.created_by = user?.id;
       }
 
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.status === 401) {
-        setError("Sesi berakhir. Silakan login kembali.");
-        if (typeof window !== 'undefined') {
-          window.location.href = "/login";
+      const endpoint = buildEndpoint('/agenda', params);
+      const result = await apiService.get(endpoint);
+      
+      
+      // Handle different response structures
+      if (result) {
+        if (result.agenda && Array.isArray(result.agenda)) {
+          // Response has agenda property (correct structure)
+          setAgendas(result.agenda);
+        } else if (Array.isArray(result)) {
+          // Response is directly an array
+          setAgendas(result);
+        } else {
+          // Fallback: try to find agenda in the response
+          setAgendas(result.agenda || []);
         }
-        return;
+      } else {
+        setAgendas([]);
       }
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Gagal memuat agenda.");
-      }
-
-      const result = await response.json();
-      setAgendas(result.data.agenda);
     } catch (err: any) {
+      console.error("Error loading agendas:", err);
       setError(err.message || "Terjadi kesalahan saat memuat agenda.");
+      setAgendas([]);
     } finally {
       setIsLoading(false);
     }

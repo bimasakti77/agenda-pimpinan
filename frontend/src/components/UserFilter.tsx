@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { getStoredToken } from "@/lib/auth";
+import { apiService } from "@/services/apiService";
 
 interface User {
   id: number;
@@ -35,35 +35,14 @@ export default function UserFilter({ onUserSelect, selectedUserId }: UserFilterP
   const loadUsers = async () => {
     try {
       setIsLoading(true);
-      const token = getStoredToken();
       
-      if (!token) {
-        setError("Token tidak ditemukan");
-        return;
-      }
-
-      const response = await fetch("http://localhost:3000/api/users?limit=100", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.status === 401) {
-        window.location.href = "/login";
-        return;
-      }
-
-      const data = await response.json();
-
-      if (response.ok) {
-        // Filter hanya user dengan role 'user'
-        const allUsers = data.data?.users || [];
-        const filteredUsers = allUsers.filter((user: User) => user.role === 'user');
-        setUsers(filteredUsers);
-        setError("");
-      } else {
-        setError(data.message || "Gagal memuat data user");
-      }
+      const data = await apiService.get('/users', { limit: 100 });
+      
+      // Filter hanya user dengan role 'user'
+      const allUsers = data.data?.users || [];
+      const filteredUsers = allUsers.filter((user: User) => user.role === 'user');
+      setUsers(filteredUsers);
+      setError("");
     } catch (error) {
       setError("Terjadi kesalahan saat memuat data user");
       console.error("Error loading users:", error);

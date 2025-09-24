@@ -72,7 +72,10 @@ export const refreshAccessToken = async (): Promise<boolean> => {
     const refreshToken = getStoredRefreshToken();
     if (!refreshToken) return false;
 
-    const response = await fetch("http://localhost:3000/api/auth/refresh", {
+    // Import API utility to avoid circular dependency
+    const { apiFetch } = await import('@/lib/apiUtils');
+    
+    const response = await apiFetch('/auth/refresh', {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

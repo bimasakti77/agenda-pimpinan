@@ -9,6 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UserCheck, UserX, UserCog, AlertCircle, Save } from "lucide-react";
 import toast from "react-hot-toast";
+import { apiService } from "@/services/apiService";
+import { API_ENDPOINTS } from "@/services/apiEndpoints";
+import { getErrorMessage, logError, isValidationError } from "@/utils/errorHandler";
 
 interface UpdateAgendaStatusProps {
   isOpen: boolean;
@@ -78,7 +81,6 @@ export default function UpdateAgendaStatus({
       newErrors.representative = "Nama perwakilan harus diisi";
     }
 
-    console.log("Validation errors:", newErrors); // Debug log
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -86,19 +88,34 @@ export default function UpdateAgendaStatus({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateForm()) {
-      // Get specific error messages
+    // Validate form and get errors directly
+    const newErrors: Partial<StatusFormData> = {};
+
+    if (!formData.attendanceStatus) {
+      newErrors.attendanceStatus = "Status kehadiran harus dipilih";
+    }
+
+    if (formData.attendanceStatus === "not_attending" && !formData.reason.trim()) {
+      newErrors.reason = "Alasan tidak menghadiri harus diisi";
+    }
+
+    if (formData.attendanceStatus === "represented" && !formData.representative.trim()) {
+      newErrors.representative = "Nama perwakilan harus diisi";
+    }
+
+    // Set errors in state
+    setErrors(newErrors);
+
+    // Check if there are validation errors
+    if (Object.keys(newErrors).length > 0) {
+      // Get specific error messages from the newErrors object
       const errorMessages = [];
-      if (errors.attendanceStatus) errorMessages.push(errors.attendanceStatus);
-      if (errors.reason) errorMessages.push(errors.reason);
-      if (errors.representative) errorMessages.push(errors.representative);
+      if (newErrors.attendanceStatus) errorMessages.push(newErrors.attendanceStatus);
+      if (newErrors.reason) errorMessages.push(newErrors.reason);
+      if (newErrors.representative) errorMessages.push(newErrors.representative);
       
-      const errorMessage = errorMessages.length > 0 
-        ? errorMessages.join(', ') 
-        : "Mohon perbaiki error yang ada";
+      const errorMessage = errorMessages.join(', ');
         
-      console.log("Error messages to display:", errorMessages); // Debug log
-      console.log("Final error message:", errorMessage); // Debug log
         
       toast.error(errorMessage, {
         duration: 4000,
@@ -145,35 +162,11 @@ export default function UpdateAgendaStatus({
 
       updateData.notes = notes;
 
-      console.log("Updating agenda with data:", updateData);
-
-      const response = await fetch(`http://localhost:3000/api/agenda/${agenda?.id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(updateData),
-      });
-
-      if (response.status === 401) {
-        throw new Error("Sesi berakhir. Silakan login kembali.");
+      if (!agenda?.id) {
+        throw new Error("ID agenda tidak ditemukan");
       }
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error("API Error:", errorData);
-        
-        // Handle validation errors specifically
-        if (errorData.errors && Array.isArray(errorData.errors)) {
-          const validationErrors = errorData.errors.map((err: any) => err.message).join(', ');
-          throw new Error(`Validation error: ${validationErrors}`);
-        }
-        
-        throw new Error(errorData.message || "Gagal mengupdate status agenda");
-      }
-
-      const result = await response.json();
+      const result = await apiService.put(API_ENDPOINTS.AGENDA.UPDATE(agenda.id!), updateData);
       
       toast.success("Status agenda berhasil diupdate!", {
         duration: 3000,
@@ -196,11 +189,15 @@ export default function UpdateAgendaStatus({
       onSuccess();
 
     } catch (error: any) {
-      console.error("Error updating agenda status:", error);
-      toast.error(error.message || "Terjadi kesalahan saat mengupdate status agenda", {
-        duration: 3000,
+      logError(error, 'UpdateAgendaStatus');
+      
+      const errorMessage = getErrorMessage(error);
+      const isValidation = isValidationError(error);
+      
+      toast.error(errorMessage, {
+        duration: isValidation ? 4000 : 3000,
         style: {
-          background: '#EF4444',
+          background: isValidation ? '#F59E0B' : '#EF4444', // Orange for validation, red for other errors
           color: '#fff',
         },
       });

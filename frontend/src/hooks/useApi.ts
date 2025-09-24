@@ -1,9 +1,17 @@
+/**
+ * Custom hook for API calls using the centralized API service
+ * Provides loading states, error handling, and automatic refetching
+ */
+
 import { useState, useEffect, useCallback } from 'react';
-import { getStoredToken, refreshAccessToken } from '@/lib/auth';
+import { apiService } from '@/services/apiService';
+import { API_ENDPOINTS } from '@/services/apiEndpoints';
+import { RequestConfig } from '@/types/api';
 import toast from 'react-hot-toast';
 
-interface UseApiOptions extends RequestInit {
+interface UseApiOptions extends RequestConfig {
   autoFetch?: boolean;
+  showErrorToast?: boolean;
 }
 
 interface UseApiReturn<T> {
@@ -13,11 +21,15 @@ interface UseApiReturn<T> {
   refetch: () => Promise<void>;
 }
 
+/**
+ * Generic API hook for GET requests
+ */
 export const useApi = <T = any>(
-  url: string, 
+  endpoint: string, 
+  params?: Record<string, string | number | boolean>,
   options: UseApiOptions = {}
 ): UseApiReturn<T> => {
-  const { autoFetch = true, ...fetchOptions } = options;
+  const { autoFetch = true, showErrorToast = true, ...config } = options;
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(autoFetch);
   const [error, setError] = useState<string | null>(null);
@@ -27,77 +39,19 @@ export const useApi = <T = any>(
       setLoading(true);
       setError(null);
       
-      const token = getStoredToken();
-      if (!token) {
-        window.location.href = '/login';
-        return;
-      }
-
-      const response = await fetch(url, {
-        ...fetchOptions,
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          ...fetchOptions.headers,
-        },
-      });
-
-      if (response.status === 401) {
-        // Token expired, try to refresh
-        const refreshSuccess = await refreshAccessToken();
-        if (refreshSuccess) {
-          const newToken = getStoredToken();
-          const retryResponse = await fetch(url, {
-            ...fetchOptions,
-            headers: {
-              'Authorization': `Bearer ${newToken}`,
-              'Content-Type': 'application/json',
-              ...fetchOptions.headers,
-            },
-          });
-          
-          if (retryResponse.ok) {
-            const result = await retryResponse.json();
-            setData(result.data || result);
-          } else {
-            throw new Error('Failed to fetch data after token refresh');
-          }
-        } else {
-          // Refresh failed, redirect to login
-          window.location.href = '/login';
-          return;
-        }
-      } else if (response.ok) {
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          const result = await response.json();
-          setData(result.data || result);
-        } else {
-          // If response is not JSON, get text to see what we received
-          const text = await response.text();
-          console.error('Non-JSON response received:', text);
-          throw new Error('Server returned non-JSON response');
-        }
-      } else {
-        const contentType = response.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Failed to fetch data');
-        } else {
-          // If error response is not JSON, get text
-          const text = await response.text();
-          console.error('Error response (non-JSON):', text);
-          throw new Error(`Server error: ${response.status} ${response.statusText}`);
-        }
-      }
+      const result = await apiService.get<T>(endpoint, params, config);
+      setData(result);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An error occurred';
       setError(errorMessage);
-      toast.error(errorMessage);
+      
+      if (showErrorToast) {
+        toast.error(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
-  }, [url, JSON.stringify(fetchOptions)]);
+  }, [endpoint, JSON.stringify(params), JSON.stringify(config), showErrorToast]);
 
   useEffect(() => {
     if (autoFetch) {
@@ -107,3 +61,166 @@ export const useApi = <T = any>(
 
   return { data, loading, error, refetch: fetchData };
 };
+
+/**
+ * Hook for POST requests
+ */
+export const useApiPost = <T = any>(
+  endpoint: string,
+  options: UseApiOptions = {}
+) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const execute = useCallback(async (data?: any): Promise<T | null> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const result = await apiService.post<T>(endpoint, data, options);
+      return result;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      setError(errorMessage);
+      toast.error(errorMessage);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [endpoint, JSON.stringify(options)]);
+
+  return { execute, loading, error };
+};
+
+/**
+ * Hook for PUT requests
+ */
+export const useApiPut = <T = any>(
+  endpoint: string,
+  options: UseApiOptions = {}
+) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const execute = useCallback(async (data?: any): Promise<T | null> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const result = await apiService.put<T>(endpoint, data, options);
+      return result;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      setError(errorMessage);
+      toast.error(errorMessage);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [endpoint, JSON.stringify(options)]);
+
+  return { execute, loading, error };
+};
+
+/**
+ * Hook for DELETE requests
+ */
+export const useApiDelete = <T = any>(
+  endpoint: string,
+  options: UseApiOptions = {}
+) => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const execute = useCallback(async (): Promise<T | null> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const result = await apiService.delete<T>(endpoint, options);
+      return result;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      setError(errorMessage);
+      toast.error(errorMessage);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, [endpoint, JSON.stringify(options)]);
+
+  return { execute, loading, error };
+};
+
+/**
+ * Hook for agenda-specific API calls
+ */
+export const useAgendaApi = () => {
+  const getAgendas = useCallback((params?: Record<string, string | number | boolean>) => {
+    return apiService.get(API_ENDPOINTS.AGENDA.LIST, params);
+  }, []);
+
+  const getAgendaById = useCallback((id: number) => {
+    return apiService.get(API_ENDPOINTS.AGENDA.GET_BY_ID(id));
+  }, []);
+
+  const createAgenda = useCallback((data: any) => {
+    return apiService.post(API_ENDPOINTS.AGENDA.CREATE, data);
+  }, []);
+
+  const updateAgenda = useCallback((id: number, data: any) => {
+    return apiService.put(API_ENDPOINTS.AGENDA.UPDATE(id), data);
+  }, []);
+
+  const deleteAgenda = useCallback((id: number) => {
+    return apiService.delete(API_ENDPOINTS.AGENDA.DELETE(id));
+  }, []);
+
+  const updateAgendaStatus = useCallback((id: number, data: any) => {
+    return apiService.patch(API_ENDPOINTS.AGENDA.UPDATE_STATUS(id), data);
+  }, []);
+
+  return {
+    getAgendas,
+    getAgendaById,
+    createAgenda,
+    updateAgenda,
+    deleteAgenda,
+    updateAgendaStatus,
+  };
+};
+
+/**
+ * Hook for user-specific API calls
+ */
+export const useUserApi = () => {
+  const getUsers = useCallback((params?: Record<string, string | number | boolean>) => {
+    return apiService.get(API_ENDPOINTS.USERS.LIST, params);
+  }, []);
+
+  const getUserById = useCallback((id: number) => {
+    return apiService.get(API_ENDPOINTS.USERS.GET_BY_ID(id));
+  }, []);
+
+  const createUser = useCallback((data: any) => {
+    return apiService.post(API_ENDPOINTS.USERS.CREATE, data);
+  }, []);
+
+  const updateUser = useCallback((id: number, data: any) => {
+    return apiService.put(API_ENDPOINTS.USERS.UPDATE(id), data);
+  }, []);
+
+  const deleteUser = useCallback((id: number) => {
+    return apiService.delete(API_ENDPOINTS.USERS.DELETE(id));
+  }, []);
+
+  return {
+    getUsers,
+    getUserById,
+    createUser,
+    updateUser,
+    deleteUser,
+  };
+};
+
+export default useApi;

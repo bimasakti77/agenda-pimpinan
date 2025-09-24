@@ -3,9 +3,15 @@ const authService = require('../services/authService');
 // Authentication middleware
 const authenticate = async (req, res, next) => {
   try {
+    console.log('=== AUTH MIDDLEWARE ===');
+    console.log('Request URL:', req.originalUrl);
+    console.log('Request method:', req.method);
+    
     const authHeader = req.headers.authorization;
+    console.log('Auth header:', authHeader ? authHeader.substring(0, 20) + '...' : 'null');
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log('No valid auth header found');
       return res.status(401).json({
         success: false,
         message: 'Access token required'
@@ -13,14 +19,18 @@ const authenticate = async (req, res, next) => {
     }
 
     const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+    console.log('Token extracted:', token.substring(0, 20) + '...');
     
     // Verify token
     const decoded = authService.verifyToken(token);
+    console.log('Token decoded successfully:', decoded);
     
     // Add user info to request
     req.user = decoded;
+    console.log('User added to request:', req.user);
     next();
   } catch (error) {
+    console.error('Auth middleware error:', error);
     return res.status(401).json({
       success: false,
       message: 'Invalid or expired token'

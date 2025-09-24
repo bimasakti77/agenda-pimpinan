@@ -30,6 +30,7 @@ router.get('/stats/dashboard', authenticate, async (req, res, next) => {
       data: result
     });
   } catch (error) {
+    console.error('Dashboard Stats error:', error);
     next(error);
   }
 });

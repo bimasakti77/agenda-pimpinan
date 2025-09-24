@@ -11,8 +11,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Plus, UserCheck, Trash2, Edit } from "lucide-react";
 import UpdateAgendaStatus from "./UpdateAgendaStatus";
 import EditAgendaForm from "./EditAgendaForm";
-import { getStoredToken } from "@/lib/auth";
 import toast from "react-hot-toast";
+import { apiService } from "@/services/apiService";
+import { API_ENDPOINTS } from "@/services/apiEndpoints";
 
 // Setup moment localizer
 const localizer = momentLocalizer(moment);
@@ -63,6 +64,7 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
   const [isEditAgendaOpen, setIsEditAgendaOpen] = useState(false);
   const [currentView, setCurrentView] = useState(Views.MONTH);
   const [currentDate, setCurrentDate] = useState(new Date());
+
 
   // Convert agendas to calendar events
   const events: CalendarEvent[] = useMemo(() => {
@@ -175,20 +177,12 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
     // Refresh the selected event data if modal is still open
     if (selectedEvent && isModalOpen) {
       try {
-        const token = getStoredToken();
-        if (token) {
-          const response = await fetch(`http://localhost:3000/api/agenda/${selectedEvent.id}`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          
-          if (response.ok) {
-            const result = await response.json();
-            if (result.success && result.data) {
-              setSelectedEvent(result.data);
-            }
-          }
+        const result = await apiService.get(API_ENDPOINTS.AGENDA.GET_BY_ID(selectedEvent.id));
+        
+        if (result.success && result.data) {
+          setSelectedEvent(result.data);
+        } else if (result) {
+          setSelectedEvent(result);
         }
       } catch (error) {
         console.error("Error refreshing selected event after status update:", error);
@@ -212,23 +206,15 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
     // Refresh the selected event data if modal is still open
     if (selectedEvent && isModalOpen) {
       try {
-        const token = getStoredToken();
-        if (token) {
-          const response = await fetch(`http://localhost:3000/api/agenda/${selectedEvent.id}`, {
-            headers: {
-              'Authorization': `Bearer ${token}`
-            }
-          });
-          
-          if (response.ok) {
-            const result = await response.json();
-            if (result.success && result.data) {
-              setSelectedEvent(result.data);
-            }
-          }
+        const result = await apiService.get(API_ENDPOINTS.AGENDA.GET_BY_ID(selectedEvent.id));
+        
+        if (result.success && result.data) {
+          setSelectedEvent(result.data);
+        } else if (result) {
+          setSelectedEvent(result);
         }
       } catch (error) {
-        console.error("Error refreshing selected event:", error);
+        console.error("Error refreshing selected event after edit:", error);
       }
     }
     
@@ -274,26 +260,7 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
     setIsDeleteConfirmOpen(false);
 
     try {
-      const token = localStorage.getItem("accessToken");
-      if (!token) {
-        throw new Error("Token tidak ditemukan");
-      }
-
-      const response = await fetch(`http://localhost:3000/api/agenda/${selectedEvent.id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (response.status === 401) {
-        throw new Error("Sesi berakhir. Silakan login kembali.");
-      }
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Gagal menghapus agenda");
-      }
+      await apiService.delete(API_ENDPOINTS.AGENDA.GET_BY_ID(selectedEvent.id));
 
       toast.success("Agenda berhasil dihapus!", {
         duration: 3000,
