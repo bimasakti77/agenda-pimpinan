@@ -67,7 +67,7 @@ class PegawaiController {
   // Search pegawai
   async searchPegawai(req, res, next) {
     try {
-      const { q } = req.query;
+      const { q, limit = 20 } = req.query;
       
       // Validate search query
       if (!q || q.trim().length < 2) {
@@ -78,17 +78,21 @@ class PegawaiController {
         });
       }
       
-      const startTime = Date.now();
-      const pegawai = await pegawaiService.searchPegawai(q.trim());
-      const duration = Date.now() - startTime;
+      // Validate limit
+      const searchLimit = Math.min(parseInt(limit) || 20, 100); // Max 100 results
       
+      const startTime = Date.now();
+      const pegawai = await pegawaiService.searchPegawai(q.trim(), searchLimit);
+      const duration = Date.now() - startTime;
       
       res.json({
         success: true,
         data: pegawai,
         meta: {
           query: q.trim(),
+          limit: searchLimit,
           count: pegawai.length,
+          duration: `${duration}ms`,
           timestamp: new Date().toISOString()
         }
       });

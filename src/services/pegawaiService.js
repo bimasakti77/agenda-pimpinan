@@ -17,11 +17,11 @@ class PegawaiService {
   }
 
   // Search pegawai
-  async searchPegawai(searchTerm) {
+  async searchPegawai(searchTerm, limit = 20) {
     if (!searchTerm || searchTerm.length < 2) {
-      return await this.getAllPegawai();
+      return [];
     }
-    const pegawai = await PegawaiKemenkum.search(searchTerm);
+    const pegawai = await PegawaiKemenkum.search(searchTerm, limit);
     return pegawai;
   }
 }

@@ -50,17 +50,24 @@ class PegawaiKemenkum {
   }
 
   // Search pegawai by name or NIP
-  static async search(searchTerm) {
+  static async search(searchTerm, limit = 20) {
     const query = `
       SELECT "NIP", "Nama", "Jabatan", "SatkerID", "Pangkat", "StatusPegawai"
       FROM "simpeg_Pegawai" 
       WHERE "StatusPegawai" = 'PNS' 
       AND ("Nama" ILIKE $1 OR "NIP" ILIKE $1)
-      ORDER BY "Nama" ASC
-      LIMIT 50
+      ORDER BY 
+        CASE 
+          WHEN "Nama" ILIKE $2 THEN 1
+          WHEN "NIP" ILIKE $2 THEN 2
+          ELSE 3
+        END,
+        "Nama" ASC
+      LIMIT $3
     `;
     const searchPattern = `%${searchTerm}%`;
-    const result = await pool.query(query, [searchPattern]);
+    const exactPattern = `${searchTerm}%`; // For exact match priority
+    const result = await pool.query(query, [searchPattern, exactPattern, limit]);
     return result.rows.map(row => new PegawaiKemenkum(row));
   }
 

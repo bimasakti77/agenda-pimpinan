@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import PegawaiDropdown from '@/components/PegawaiDropdown';
+import SearchablePegawaiDropdown from '@/components/SearchablePegawaiDropdown';
 
 export default function NewUserPage() {
   const router = useRouter();
@@ -42,7 +42,7 @@ export default function NewUserPage() {
             <CardContent className="space-y-4">
               <div>
                 <Label htmlFor="pegawai">Pilih Pegawai *</Label>
-                <PegawaiDropdown
+                <SearchablePegawaiDropdown
                   value={selectedPegawaiId || ""}
                   onValueChange={(value) => setSelectedPegawaiId(value || "")}
                   onPegawaiSelect={(pegawai) => {
@@ -57,6 +57,9 @@ export default function NewUserPage() {
                     }
                   }}
                   placeholder="Pilih pegawai untuk auto-fill data"
+                  searchPlaceholder="Cari nama atau NIP pegawai..."
+                  maxResults={20}
+                  minSearchLength={2}
                 />
                 <p className="text-sm text-gray-500 mt-1">
                   Pilih pegawai untuk mengisi otomatis NIP, nama, jabatan, dan unit kerja
