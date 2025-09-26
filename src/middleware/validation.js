@@ -119,7 +119,8 @@ const schemas = {
     full_name: Joi.string().min(2).max(100).required(),
     position: Joi.string().max(100).optional(),
     department: Joi.string().max(100).optional(),
-    role: Joi.string().valid('user', 'admin', 'superadmin').default('user')
+    role: Joi.string().valid('user', 'admin', 'superadmin').default('user'),
+    nip: Joi.string().pattern(/^\d{18}$/).optional()
   }),
 
   userFilters: Joi.object({

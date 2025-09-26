@@ -266,10 +266,19 @@ export class HttpClient {
           statusCode: response.status,
           error: responseData?.error || 'HTTP_ERROR',
           details: responseData,
+          response: {
+            data: responseData,
+            status: response.status,
+            statusText: response.statusText
+          }
         };
         
-        // Log error with context
-        logError(apiError, 'HTTP Client');
+        // Log error with context (skip logging for client errors that are handled by UI)
+        if (response.status >= 500) {
+          // Only log server errors (5xx) as they need attention
+          logError(apiError, 'HTTP Client');
+        }
+        // Skip logging for client errors (4xx) - they are handled by UI
         
         throw apiError;
       }
@@ -281,9 +290,14 @@ export class HttpClient {
         statusCode: response.status,
       };
     } catch (error: any) {
-      if (isDebugEnabled) {
-        console.error('[HTTP Client] Request failed:', error);
+      // Only log network errors or unexpected errors, not API errors that are already handled
+      if (error.statusCode === undefined) {
+        // This is a network error or unexpected error
+        if (isDebugEnabled) {
+          console.error('[HTTP Client] Network error:', error);
+        }
       }
+      // Skip logging for API errors (they have statusCode) - they are handled by UI
       
       throw error;
     }

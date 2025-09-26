@@ -129,6 +129,11 @@ export function logError(error: ApiError | any, context?: string): void {
   const severity = getErrorSeverity(error);
   const message = getErrorMessage(error);
   
+  // Skip logging for client errors (4xx) that are handled by UI
+  if (error.statusCode >= 400 && error.statusCode < 500) {
+    return;
+  }
+  
   const logMessage = context 
     ? `[${context}] ${message}` 
     : message;

@@ -71,10 +71,18 @@ export const FormTemplate: React.FC<FormTemplateProps> = ({
     } catch (err: any) {
       const errorMessage = err.message || 'Gagal menyimpan data';
       
-      // Handle validation errors
+      // Handle validation errors with field-specific errors
       if (err.response?.data?.errors) {
         setErrors(err.response.data.errors);
+        // Also show the main error message in toast
+        if (err.response.data.message) {
+          toast.error(err.response.data.message);
+        }
+      } else if (err.response?.data?.message) {
+        // Show backend error message in toast
+        toast.error(err.response.data.message);
       } else {
+        // Show error message in toast for other errors
         toast.error(errorMessage);
       }
     } finally {

@@ -87,10 +87,15 @@ export default function UsersPage() {
     return finalParams.toString();
   }, [debouncedSearch, filters.role, filters.is_active, filters.page, filters.limit]);
 
+  // Create stable endpoint
+  const endpoint = useMemo(() => `/users?${queryParams}`, [queryParams]);
+  
   const { data, loading, error, refetch } = useApi<UsersResponse>(
-    `/users?${queryParams}`,
-    { autoFetch: true }
+    endpoint
   );
+
+
+
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({
@@ -147,6 +152,7 @@ export default function UsersPage() {
         <UserLayout title="User Management" description="Kelola pengguna sistem">
           <div className="flex items-center justify-center py-12">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="ml-2">Loading users...</span>
           </div>
         </UserLayout>
       </RoleGuard>

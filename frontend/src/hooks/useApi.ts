@@ -31,70 +31,33 @@ export const useApi = <T = any>(
 ): UseApiReturn<T> => {
   const { autoFetch = true, showErrorToast = true, ...config } = options;
   const [data, setData] = useState<T | null>(null);
-  const [loading, setLoading] = useState(autoFetch);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  
-  // Use refs to store stable values
-  const paramsRef = useRef(params);
-  const configRef = useRef(config);
-  const endpointRef = useRef(endpoint);
-  
-  // Update refs when values change
-  paramsRef.current = params;
-  configRef.current = config;
-  endpointRef.current = endpoint;
-  
-  // Use ref to track if we've already fetched data
-  const hasFetched = useRef(false);
-  const fetchPromise = useRef<Promise<void> | null>(null);
-  const isMounted = useRef(true);
 
   const fetchData = useCallback(async () => {
-    // Prevent duplicate requests
-    if (fetchPromise.current) {
-      return fetchPromise.current;
-    }
-    
-    fetchPromise.current = (async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        
-        const result = await apiService.get<T>(endpointRef.current, paramsRef.current, configRef.current);
-        if (isMounted.current) {
-          setData(result);
-          hasFetched.current = true;
-        }
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-        if (isMounted.current) {
-          setError(errorMessage);
-        }
-        
-        if (showErrorToast) {
-          toast.error(errorMessage);
-        }
-      } finally {
-        if (isMounted.current) {
-          setLoading(false);
-        }
-        fetchPromise.current = null;
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const result = await apiService.get<T>(endpoint, params, config);
+      setData(result);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+      setError(errorMessage);
+      
+      if (showErrorToast) {
+        toast.error(errorMessage);
       }
-    })();
-    
-    return fetchPromise.current;
-  }, [showErrorToast]);
+    } finally {
+      setLoading(false);
+    }
+  }, [endpoint, params, config, showErrorToast]);
 
   useEffect(() => {
-    if (autoFetch && !hasFetched.current && isMounted.current) {
+    if (autoFetch) {
       fetchData();
     }
-    
-    return () => {
-      isMounted.current = false;
-    };
-  }, [autoFetch]); // Remove fetchData from dependencies
+  }, [autoFetch, endpoint]);
 
   return { data, loading, error, refetch: fetchData };
 };

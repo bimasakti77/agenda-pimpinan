@@ -25,7 +25,10 @@ export default function NewUserPage() {
         title="Add New User"
         endpoint="/users"
         method="POST"
-        onSuccess={() => router.push('/users')}
+        onSuccess={() => {
+          // Use window.location for full page refresh to ensure fresh data
+          window.location.href = '/users';
+        }}
         breadcrumbs={[
           { label: 'Dashboard', href: '/dashboard' },
           { label: 'User Management', href: '/users' },
