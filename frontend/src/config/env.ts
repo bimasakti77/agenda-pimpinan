@@ -25,79 +25,56 @@ interface AppConfig {
   };
 }
 
-/**
- * Get environment variable with fallback
- */
-function getEnvVar(key: string, fallback: string = ''): string {
-  if (typeof window !== 'undefined') {
-    // Client-side
-    return process.env[key] || fallback;
-  }
-  // Server-side
-  return process.env[key] || fallback;
-}
 
 /**
- * Get boolean environment variable
- */
-function getBooleanEnvVar(key: string, fallback: boolean = false): boolean {
-  const value = getEnvVar(key, fallback.toString());
-  return value.toLowerCase() === 'true';
-}
-
-/**
- * Get number environment variable
- */
-function getNumberEnvVar(key: string, fallback: number = 0): number {
-  const value = getEnvVar(key, fallback.toString());
-  const parsed = parseInt(value, 10);
-  return isNaN(parsed) ? fallback : parsed;
-}
-
-/**
- * Application configuration
+ * Application configuration - Direct access to process.env
  */
 export const config: AppConfig = {
   api: {
-    baseUrl: getEnvVar('NEXT_PUBLIC_API_BASE_URL', 'http://localhost:3000/api'),
-    timeout: getNumberEnvVar('NEXT_PUBLIC_API_TIMEOUT', 30000),
-    retryAttempts: getNumberEnvVar('NEXT_PUBLIC_API_RETRY_ATTEMPTS', 3),
-    retryDelay: getNumberEnvVar('NEXT_PUBLIC_API_RETRY_DELAY', 1000),
+    baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000/api',
+    timeout: parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || '30000', 10),
+    retryAttempts: parseInt(process.env.NEXT_PUBLIC_API_RETRY_ATTEMPTS || '3', 10),
+    retryDelay: parseInt(process.env.NEXT_PUBLIC_API_RETRY_DELAY || '1000', 10),
   },
   app: {
-    name: getEnvVar('NEXT_PUBLIC_APP_NAME', 'Agenda Pimpinan'),
-    version: getEnvVar('NEXT_PUBLIC_APP_VERSION', '1.0.0'),
-    environment: getEnvVar('NEXT_PUBLIC_APP_ENV', 'development'),
+    name: process.env.NEXT_PUBLIC_APP_NAME || 'Agenda Pimpinan',
+    version: process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0',
+    environment: process.env.NEXT_PUBLIC_APP_ENV || 'development',
   },
   features: {
-    debug: getBooleanEnvVar('NEXT_PUBLIC_ENABLE_DEBUG', false),
-    analytics: getBooleanEnvVar('NEXT_PUBLIC_ENABLE_ANALYTICS', false),
+    debug: (process.env.NEXT_PUBLIC_ENABLE_DEBUG || 'false').toLowerCase() === 'true',
+    analytics: (process.env.NEXT_PUBLIC_ENABLE_ANALYTICS || 'false').toLowerCase() === 'true',
   },
   external: {
-    sentryDsn: getEnvVar('NEXT_PUBLIC_SENTRY_DSN'),
-    googleAnalyticsId: getEnvVar('NEXT_PUBLIC_GOOGLE_ANALYTICS_ID'),
+    sentryDsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
+    googleAnalyticsId: process.env.NEXT_PUBLIC_GOOGLE_ANALYTICS_ID,
   },
 };
 
 /**
  * Check if running in development mode
  */
-export const isDevelopment = config.app.environment === 'development';
+export const isDevelopment = (process.env.NEXT_PUBLIC_APP_ENV || 'development') === 'development';
 
 /**
  * Check if running in production mode
  */
-export const isProduction = config.app.environment === 'production';
+export const isProduction = (process.env.NEXT_PUBLIC_APP_ENV || 'development') === 'production';
 
 /**
  * Check if debug mode is enabled
  */
-export const isDebugEnabled = config.features.debug;
+export const isDebugEnabled = (process.env.NEXT_PUBLIC_ENABLE_DEBUG || 'false').toLowerCase() === 'true';
 
 /**
- * API Configuration
+ * API Configuration - Direct access to avoid circular dependency
  */
-export const apiConfig = config.api;
+export const apiConfig = {
+  baseUrl: process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3000/api',
+  timeout: parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || '30000', 10),
+  retryAttempts: parseInt(process.env.NEXT_PUBLIC_API_RETRY_ATTEMPTS || '3', 10),
+  retryDelay: parseInt(process.env.NEXT_PUBLIC_API_RETRY_DELAY || '1000', 10),
+};
 
 /**
  * App Configuration

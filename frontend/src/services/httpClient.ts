@@ -192,12 +192,12 @@ export class HttpClient {
     };
 
     try {
-      if (isDebugEnabled) {
-        console.log(`[HTTP Client] ${options.method || 'GET'} ${url}`, {
-          headers: requestOptions.headers,
-          body: requestOptions.body,
-        });
-      }
+        if (isDebugEnabled) {
+          console.log(`[HTTP Client] ${options.method || 'GET'} ${url}`, {
+            headers: requestOptions.headers,
+            body: requestOptions.body,
+          });
+        }
 
       const response = await fetch(url, requestOptions);
       

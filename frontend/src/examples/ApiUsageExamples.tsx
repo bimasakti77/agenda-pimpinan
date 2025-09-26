@@ -289,7 +289,8 @@ export function AdvancedUsageExample() {
         file,
         (progress) => {
           if (process.env.NODE_ENV === 'development') {
-          console.log(`Upload progress: ${progress}%`);
+            console.log(`Upload progress: ${progress}%`);
+          }
         }
         }
       );
