@@ -30,6 +30,7 @@ interface User {
   full_name: string;
   position?: string;
   department?: string;
+  nip?: string;
   role: 'user' | 'admin' | 'superadmin';
   is_active: boolean;
   created_at: string;
@@ -300,6 +301,11 @@ export default function UsersPage() {
                             <div className="text-sm text-gray-500">
                               {user.email}
                             </div>
+                            {user.nip && (
+                              <div className="text-xs text-blue-600 font-medium">
+                                NIP: {user.nip}
+                              </div>
+                            )}
                             {user.position && (
                               <div className="text-xs text-gray-400">
                                 {user.position} • {user.department}

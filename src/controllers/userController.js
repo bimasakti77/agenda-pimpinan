@@ -34,6 +34,28 @@ class UserController {
   // Create new user (admin only)
   async createUser(req, res, next) {
     try {
+      const { username, email, password, full_name, position, department, role = 'user', nip } = req.body;
+
+      // Check if user already exists by email
+      const existingUserByEmail = await userService.getUserByEmail(email);
+      if (existingUserByEmail) {
+        return res.status(400).json({
+          success: false,
+          message: 'Email sudah terdaftar',
+          errors: { email: 'Email sudah terdaftar' }
+        });
+      }
+
+      // Check if user already exists by username
+      const existingUserByUsername = await userService.getUserByUsername(username);
+      if (existingUserByUsername) {
+        return res.status(400).json({
+          success: false,
+          message: 'Username sudah digunakan',
+          errors: { username: 'Username sudah digunakan' }
+        });
+      }
+
       const user = await userService.createUser(req.body);
       res.status(201).json({
         success: true,
@@ -41,6 +63,14 @@ class UserController {
         data: user.toJSON()
       });
     } catch (error) {
+      // Handle NIP validation error
+      if (error.message === 'NIP sudah terdaftar untuk user lain') {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+          errors: { nip: error.message }
+        });
+      }
       next(error);
     }
   }
@@ -55,6 +85,14 @@ class UserController {
         data: user.toJSON()
       });
     } catch (error) {
+      // Handle NIP validation error
+      if (error.message === 'NIP sudah terdaftar untuk user lain') {
+        return res.status(400).json({
+          success: false,
+          message: error.message,
+          errors: { nip: error.message }
+        });
+      }
       next(error);
     }
   }
@@ -175,6 +213,29 @@ class UserController {
       res.json({
         success: true,
         data: activity
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // Check NIP availability
+  async checkNipAvailability(req, res, next) {
+    try {
+      const { nip } = req.query;
+      const { excludeUserId } = req.query;
+      
+      if (!nip) {
+        return res.status(400).json({
+          success: false,
+          message: 'NIP parameter is required'
+        });
+      }
+      
+      const result = await userService.checkNipAvailability(nip, excludeUserId);
+      res.json({
+        success: true,
+        data: result
       });
     } catch (error) {
       next(error);

@@ -90,6 +90,56 @@ const migrations = [
       ADD COLUMN IF NOT EXISTS attendance_status VARCHAR(20) 
       CHECK (attendance_status IN ('attending', 'not_attending', 'represented'));
     `
+  },
+  {
+    name: 'add_nip_to_users',
+    query: `
+      ALTER TABLE users 
+      ADD COLUMN IF NOT EXISTS nip VARCHAR(50);
+    `
+  },
+  {
+    name: 'create_users_nip_index',
+    query: `
+      CREATE INDEX IF NOT EXISTS idx_users_nip ON users(nip);
+    `
+  },
+  {
+    name: 'create_simpeg_pegawai_table',
+    query: `
+      CREATE TABLE IF NOT EXISTS "simpeg_Pegawai" (
+        "NIP" VARCHAR(50) PRIMARY KEY,
+        "NIK" VARCHAR(100),
+        "Nama" VARCHAR(150),
+        "GelarDepan" VARCHAR(50),
+        "GelarBelakang" VARCHAR(50),
+        "EmailDinas" VARCHAR(150),
+        "Telepon" VARCHAR(150),
+        "TempatLahir" VARCHAR(100),
+        "TglLahir" DATE,
+        "JenisKelamin" VARCHAR(20),
+        "Agama" VARCHAR(10),
+        "StatusKawin" VARCHAR(50),
+        "Foto" VARCHAR(150),
+        "PendidikanTerakhir" VARCHAR(100),
+        "SatkerID" VARCHAR(25),
+        "KodeJabatan" VARCHAR(50),
+        "Jabatan" VARCHAR(500),
+        "TipePegawai" VARCHAR(10),
+        "StatusPegawai" VARCHAR(10),
+        "Pangkat" VARCHAR(50),
+        "RowNumber" INTEGER
+      );
+    `
+  },
+  {
+    name: 'create_simpeg_pegawai_indexes',
+    query: `
+      CREATE INDEX IF NOT EXISTS idx_simpeg_pegawai_nama ON "simpeg_Pegawai"("Nama");
+      CREATE INDEX IF NOT EXISTS idx_simpeg_pegawai_status ON "simpeg_Pegawai"("StatusPegawai");
+      CREATE INDEX IF NOT EXISTS idx_simpeg_pegawai_satker ON "simpeg_Pegawai"("SatkerID");
+      CREATE INDEX IF NOT EXISTS idx_simpeg_pegawai_jabatan ON "simpeg_Pegawai"("Jabatan");
+    `
   }
 ];
 

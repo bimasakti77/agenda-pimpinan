@@ -192,12 +192,6 @@ export class HttpClient {
     };
 
     try {
-        if (isDebugEnabled) {
-          console.log(`[HTTP Client] ${options.method || 'GET'} ${url}`, {
-            headers: requestOptions.headers,
-            body: requestOptions.body,
-          });
-        }
 
       const response = await fetch(url, requestOptions);
       
@@ -220,9 +214,6 @@ export class HttpClient {
       if (retries > 0 && this.shouldRetry(modifiedError)) {
         const delay = this.calculateRetryDelay(this.retryConfig.attempts - retries + 1);
         
-        if (isDebugEnabled) {
-          console.log(`[HTTP Client] Retrying in ${delay}ms (${retries} attempts left)`);
-        }
         
         await this.sleep(delay);
         return this.makeRequest(url, options, { ...config, retries: retries - 1 });

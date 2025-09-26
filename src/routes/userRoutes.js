@@ -37,6 +37,18 @@ router.get('/', authenticate, authorize('superadmin'), async (req, res, next) =>
   }
 });
 
+// @route   GET /api/users/check-nip
+// @desc    Check NIP availability
+// @access  Superadmin only
+router.get('/check-nip', authenticate, authorize('superadmin'), async (req, res, next) => {
+  try {
+    const userController = require('../controllers/userController');
+    await userController.checkNipAvailability(req, res, next);
+  } catch (error) {
+    next(error);
+  }
+});
+
 // @route   GET /api/users/:id
 // @desc    Get user by ID
 // @access  Superadmin only
@@ -65,41 +77,8 @@ router.get('/:id', authenticate, authorize('superadmin'), async (req, res, next)
 // @access  Superadmin only
 router.post('/', authenticate, authorize('superadmin'), validate(schemas.createUser), async (req, res, next) => {
   try {
-    const { username, email, password, full_name, position, department, role = 'user' } = req.body;
-
-    // Check if user already exists
-    const existingUserByEmail = await User.findByEmail(email);
-    if (existingUserByEmail) {
-      return res.status(400).json({
-        success: false,
-        message: 'Email already registered'
-      });
-    }
-
-    const existingUserByUsername = await User.findByUsername(username);
-    if (existingUserByUsername) {
-      return res.status(400).json({
-        success: false,
-        message: 'Username already taken'
-      });
-    }
-
-    // Create new user
-    const user = await User.create({
-      username,
-      email,
-      password,
-      full_name,
-      position,
-      department,
-      role
-    });
-
-    res.status(201).json({
-      success: true,
-      message: 'User created successfully',
-      data: user
-    });
+    const userController = require('../controllers/userController');
+    await userController.createUser(req, res, next);
   } catch (error) {
     next(error);
   }

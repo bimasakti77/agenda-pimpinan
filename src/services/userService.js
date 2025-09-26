@@ -16,7 +16,7 @@ class UserService {
     }
     
     if (search) {
-      whereConditions.push(`(username ILIKE $${paramCount} OR email ILIKE $${paramCount} OR full_name ILIKE $${paramCount})`);
+      whereConditions.push(`(username ILIKE $${paramCount} OR email ILIKE $${paramCount} OR full_name ILIKE $${paramCount} OR nip ILIKE $${paramCount})`);
       values.push(`%${search}%`);
       paramCount++;
     }
@@ -24,7 +24,7 @@ class UserService {
     const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
     
     const query = `
-      SELECT id, username, email, role, full_name, position, department, is_active, created_at, updated_at
+      SELECT id, username, email, role, full_name, position, department, nip, is_active, created_at, updated_at
       FROM users
       ${whereClause}
       ORDER BY created_at DESC
@@ -62,6 +62,16 @@ class UserService {
       throw new Error('User not found');
     }
     return user;
+  }
+
+  // Get user by email
+  async getUserByEmail(email) {
+    return await User.findByEmail(email);
+  }
+
+  // Get user by username
+  async getUserByUsername(username) {
+    return await User.findByUsername(username);
   }
 
   // Create user (admin only)
@@ -203,6 +213,33 @@ class UserService {
       user: user.toJSON(),
       activity,
       recentAgenda
+    };
+  }
+
+  // Check if NIP is available
+  async checkNipAvailability(nip, excludeUserId = null) {
+    if (!nip || nip.trim() === '') {
+      return { available: true, message: 'NIP kosong' };
+    }
+
+    const user = await User.findByNip(nip.trim());
+    
+    if (!user) {
+      return { available: true, message: 'NIP tersedia' };
+    }
+    
+    if (excludeUserId && user.id === parseInt(excludeUserId)) {
+      return { available: true, message: 'NIP tersedia (user yang sama)' };
+    }
+    
+    return { 
+      available: false, 
+      message: 'NIP sudah terdaftar untuk user lain',
+      existingUser: {
+        id: user.id,
+        username: user.username,
+        full_name: user.full_name
+      }
     };
   }
 }

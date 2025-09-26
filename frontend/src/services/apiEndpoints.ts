@@ -25,6 +25,17 @@ export const API_ENDPOINTS = {
     PROFILE: '/users/profile',
     UPDATE_PROFILE: '/users/profile',
     CHANGE_PASSWORD: '/users/change-password',
+    CHECK_NIP: '/users/check-nip',
+  },
+
+  // Pegawai endpoints
+  PEGAWAI: {
+    LIST: '/pegawai',
+    GET_BY_ID: (id: number) => `/pegawai/${id}`,
+    GET_BY_NIP: (nip: string) => `/pegawai/nip/${nip}`,
+    CREATE: '/pegawai',
+    UPDATE: (id: number) => `/pegawai/${id}`,
+    DELETE: (id: number) => `/pegawai/${id}`,
   },
 
   // Agenda endpoints

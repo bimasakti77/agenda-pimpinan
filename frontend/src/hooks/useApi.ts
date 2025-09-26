@@ -3,7 +3,7 @@
  * Provides loading states, error handling, and automatic refetching
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { apiService } from '@/services/apiService';
 import { API_ENDPOINTS } from '@/services/apiEndpoints';
 import { RequestConfig } from '@/types/api';
@@ -33,31 +33,68 @@ export const useApi = <T = any>(
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(autoFetch);
   const [error, setError] = useState<string | null>(null);
+  
+  
+  // Use refs to store stable values
+  const paramsRef = useRef(params);
+  const configRef = useRef(config);
+  const endpointRef = useRef(endpoint);
+  
+  // Update refs when values change
+  paramsRef.current = params;
+  configRef.current = config;
+  endpointRef.current = endpoint;
+  
+  // Use ref to track if we've already fetched data
+  const hasFetched = useRef(false);
+  const fetchPromise = useRef<Promise<void> | null>(null);
+  const isMounted = useRef(true);
 
   const fetchData = useCallback(async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      const result = await apiService.get<T>(endpoint, params, config);
-      setData(result);
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An error occurred';
-      setError(errorMessage);
-      
-      if (showErrorToast) {
-        toast.error(errorMessage);
-      }
-    } finally {
-      setLoading(false);
+    // Prevent duplicate requests
+    if (fetchPromise.current) {
+      return fetchPromise.current;
     }
-  }, [endpoint, JSON.stringify(params), JSON.stringify(config), showErrorToast]);
+    
+    fetchPromise.current = (async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const result = await apiService.get<T>(endpointRef.current, paramsRef.current, configRef.current);
+        if (isMounted.current) {
+          setData(result);
+          hasFetched.current = true;
+        }
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : 'An error occurred';
+        if (isMounted.current) {
+          setError(errorMessage);
+        }
+        
+        if (showErrorToast) {
+          toast.error(errorMessage);
+        }
+      } finally {
+        if (isMounted.current) {
+          setLoading(false);
+        }
+        fetchPromise.current = null;
+      }
+    })();
+    
+    return fetchPromise.current;
+  }, [showErrorToast]);
 
   useEffect(() => {
-    if (autoFetch) {
+    if (autoFetch && !hasFetched.current && isMounted.current) {
       fetchData();
     }
-  }, [fetchData, autoFetch]);
+    
+    return () => {
+      isMounted.current = false;
+    };
+  }, [autoFetch]); // Remove fetchData from dependencies
 
   return { data, loading, error, refetch: fetchData };
 };
@@ -214,12 +251,21 @@ export const useUserApi = () => {
     return apiService.delete(API_ENDPOINTS.USERS.DELETE(id));
   }, []);
 
+  const checkNipAvailability = useCallback((nip: string, excludeUserId?: number) => {
+    const params: Record<string, any> = { nip };
+    if (excludeUserId) {
+      params.excludeUserId = excludeUserId;
+    }
+    return apiService.get(API_ENDPOINTS.USERS.CHECK_NIP, params);
+  }, []);
+
   return {
     getUsers,
     getUserById,
     createUser,
     updateUser,
     deleteUser,
+    checkNipAvailability,
   };
 };
 

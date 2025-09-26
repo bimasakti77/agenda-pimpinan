@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useParams } from 'next/navigation';
 import { FormTemplate } from '@/components/FormTemplate';
@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
+import PegawaiDropdown from '@/components/PegawaiDropdown';
 
 interface User {
   id: number;
@@ -19,6 +20,7 @@ interface User {
   full_name: string;
   position?: string;
   department?: string;
+  nip?: string;
   role: 'user' | 'admin' | 'superadmin';
   is_active: boolean;
 }
@@ -27,6 +29,7 @@ export default function EditUserPage() {
   const router = useRouter();
   const params = useParams();
   const userId = params.id as string;
+  const [selectedPegawaiId, setSelectedPegawaiId] = useState<string>('');
 
   const { data: user, loading, error } = useApi<User>(`/users/${userId}`);
 
@@ -80,6 +83,41 @@ export default function EditUserPage() {
               <CardTitle>User Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="pegawai">Pilih Pegawai</Label>
+                <PegawaiDropdown
+                  value={selectedPegawaiId || ""}
+                  onValueChange={(value) => {
+                    setSelectedPegawaiId(value || "");
+                    // Reset form data when changing pegawai
+                    if (!value) {
+                      setFormData({
+                        ...formData,
+                        nip: '',
+                        full_name: formData.full_name, // Keep existing name
+                        position: formData.position, // Keep existing position
+                        department: formData.department // Keep existing department
+                      });
+                    }
+                  }}
+                  onPegawaiSelect={(pegawai) => {
+                    if (pegawai) {
+                      setFormData({
+                        ...formData,
+                        nip: pegawai.NIP,
+                        full_name: pegawai.Nama,
+                        position: pegawai.Jabatan || formData.position,
+                        department: pegawai.SatkerID || formData.department
+                      });
+                    }
+                  }}
+                  placeholder="Pilih pegawai untuk update data"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Pilih pegawai untuk mengupdate NIP, nama, jabatan, dan unit kerja
+                </p>
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="username">Username *</Label>
@@ -107,18 +145,34 @@ export default function EditUserPage() {
                 </div>
               </div>
 
-              <div>
-                <Label htmlFor="full_name">Full Name *</Label>
-                <Input
-                  id="full_name"
-                  value={formData.full_name || ''}
-                  onChange={(e) => setFormData({...formData, full_name: e.target.value})}
-                  placeholder="Enter full name"
-                  className={errors.full_name ? 'border-red-500' : ''}
-                />
-                {errors.full_name && (
-                  <p className="text-sm text-red-500 mt-1">{errors.full_name}</p>
-                )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="nip">NIP</Label>
+                  <Input
+                    id="nip"
+                    value={formData.nip || ''}
+                    onChange={(e) => setFormData({...formData, nip: e.target.value})}
+                    placeholder="Enter NIP (optional)"
+                    className={errors.nip ? 'border-red-500' : ''}
+                  />
+                  {errors.nip && (
+                    <p className="text-sm text-red-500 mt-1">{errors.nip}</p>
+                  )}
+                </div>
+
+                <div>
+                  <Label htmlFor="full_name">Full Name *</Label>
+                  <Input
+                    id="full_name"
+                    value={formData.full_name || ''}
+                    onChange={(e) => setFormData({...formData, full_name: e.target.value})}
+                    placeholder="Enter full name"
+                    className={errors.full_name ? 'border-red-500' : ''}
+                  />
+                  {errors.full_name && (
+                    <p className="text-sm text-red-500 mt-1">{errors.full_name}</p>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

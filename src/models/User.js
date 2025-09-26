@@ -11,6 +11,7 @@ class User {
     this.full_name = data.full_name;
     this.position = data.position;
     this.department = data.department;
+    this.nip = data.nip;
     this.is_active = data.is_active;
     this.created_at = data.created_at;
     this.updated_at = data.updated_at;
@@ -18,19 +19,27 @@ class User {
 
   // Create a new user
   static async create(userData) {
-    const { username, email, password, role = 'user', full_name, position, department } = userData;
+    const { username, email, password, role = 'user', full_name, position, department, nip } = userData;
+    
+    // Check if NIP already exists (if NIP is provided)
+    if (nip && nip.trim() !== '') {
+      const existingUser = await this.findByNip(nip.trim());
+      if (existingUser) {
+        throw new Error('NIP sudah terdaftar untuk user lain');
+      }
+    }
     
     // Hash password
     const saltRounds = 12;
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     
     const query = `
-      INSERT INTO users (username, email, password, role, full_name, position, department)
-      VALUES ($1, $2, $3, $4, $5, $6, $7)
-      RETURNING id, username, email, role, full_name, position, department, is_active, created_at, updated_at
+      INSERT INTO users (username, email, password, role, full_name, position, department, nip)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      RETURNING id, username, email, role, full_name, position, department, nip, is_active, created_at, updated_at
     `;
     
-    const values = [username, email, hashedPassword, role, full_name, position, department];
+    const values = [username, email, hashedPassword, role, full_name, position, department, nip];
     const result = await pool.query(query, values);
     
     return new User(result.rows[0]);
@@ -72,10 +81,22 @@ class User {
     return new User(result.rows[0]);
   }
 
+  // Find user by NIP
+  static async findByNip(nip) {
+    const query = 'SELECT * FROM users WHERE nip = $1';
+    const result = await pool.query(query, [nip]);
+    
+    if (result.rows.length === 0) {
+      return null;
+    }
+    
+    return new User(result.rows[0]);
+  }
+
   // Get all users with pagination and filtering
   static async findAll(page = 1, limit = 10, role = null, is_active = null, search = null) {
     const offset = (page - 1) * limit;
-    let query = 'SELECT id, username, email, role, full_name, position, department, is_active, created_at, updated_at FROM users';
+    let query = 'SELECT id, username, email, role, full_name, position, department, nip, is_active, created_at, updated_at FROM users';
     let countQuery = 'SELECT COUNT(*) FROM users';
     const values = [];
     const conditions = [];
@@ -102,7 +123,8 @@ class User {
         email ILIKE $${paramCount} OR 
         full_name ILIKE $${paramCount} OR 
         position ILIKE $${paramCount} OR 
-        department ILIKE $${paramCount}
+        department ILIKE $${paramCount} OR
+        nip ILIKE $${paramCount}
       )`);
       values.push(`%${search}%`);
       paramCount++;
@@ -140,10 +162,18 @@ class User {
 
   // Update user
   async update(updateData) {
-    const allowedFields = ['username', 'email', 'full_name', 'position', 'department', 'role', 'is_active'];
+    const allowedFields = ['username', 'email', 'full_name', 'position', 'department', 'nip', 'role', 'is_active'];
     const updates = [];
     const values = [];
     let paramCount = 1;
+    
+    // Check if NIP is being updated and if it already exists
+    if (updateData.nip && updateData.nip.trim() !== '') {
+      const existingUser = await User.findByNip(updateData.nip.trim());
+      if (existingUser && existingUser.id !== this.id) {
+        throw new Error('NIP sudah terdaftar untuk user lain');
+      }
+    }
     
     for (const [key, value] of Object.entries(updateData)) {
       if (allowedFields.includes(key) && value !== undefined) {

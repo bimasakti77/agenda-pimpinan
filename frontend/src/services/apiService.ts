@@ -121,7 +121,9 @@ class ApiService {
    */
   async get<T = any>(endpoint: string, params?: Record<string, string | number | boolean>, config?: RequestConfig): Promise<T> {
     try {
-      const response = await httpClient.get<T>(endpoint, params, config);
+      const response = await httpClient.get<ApiResponse<T>>(endpoint, params, config);
+      
+      // httpClient already processes the response and returns the data directly
       return response.data as T;
     } catch (error: any) {
       console.error('API Service Error:', error.message);

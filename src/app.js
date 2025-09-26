@@ -13,6 +13,7 @@ const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
 const agendaRoutes = require('./routes/agendaRoutes');
 const configRoutes = require('./routes/configRoutes');
+const pegawaiRoutes = require('./routes/pegawaiRoutes');
 
 const app = express();
 
@@ -43,8 +44,13 @@ app.use(limiter);
 // CORS configuration
 app.use(cors({
   origin: function (origin, callback) {
-    // Require origin for all requests (security)
-    if (!origin) {
+    // Allow requests with no origin (like mobile apps or curl requests) in development
+    if (!origin && NODE_ENV === 'development') {
+      return callback(null, true);
+    }
+    
+    // Require origin for all requests in production (security)
+    if (!origin && NODE_ENV === 'production') {
       return callback(new Error('Origin required'));
     }
     
@@ -109,6 +115,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/agenda', agendaRoutes);
 app.use('/api/config', configRoutes);
+app.use('/api/pegawai', pegawaiRoutes);
 
 // Error handling middleware
 app.use(notFound);

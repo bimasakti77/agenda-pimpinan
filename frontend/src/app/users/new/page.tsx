@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { FormTemplate } from '@/components/FormTemplate';
 import UserLayout from '@/components/UserLayout';
@@ -8,9 +8,16 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import PegawaiDropdown from '@/components/PegawaiDropdown';
 
 export default function NewUserPage() {
   const router = useRouter();
+  const [selectedPegawaiId, setSelectedPegawaiId] = useState<string>('');
+
+  // Check if User Information is complete (must select from dropdown)
+  const isUserInfoComplete = (formData: any) => {
+    return selectedPegawaiId && selectedPegawaiId.trim() !== '';
+  };
 
   return (
     <UserLayout title="Add New User" description="Tambah pengguna baru ke sistem">
@@ -33,6 +40,93 @@ export default function NewUserPage() {
               <CardTitle>User Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="pegawai">Pilih Pegawai *</Label>
+                <PegawaiDropdown
+                  value={selectedPegawaiId || ""}
+                  onValueChange={(value) => setSelectedPegawaiId(value || "")}
+                  onPegawaiSelect={(pegawai) => {
+                    if (pegawai) {
+                      setFormData({
+                        ...formData,
+                        nip: pegawai.NIP,
+                        full_name: pegawai.Nama,
+                        position: pegawai.Jabatan || '',
+                        department: pegawai.SatkerID || ''
+                      });
+                    }
+                  }}
+                  placeholder="Pilih pegawai untuk auto-fill data"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  Pilih pegawai untuk mengisi otomatis NIP, nama, jabatan, dan unit kerja
+                </p>
+              </div>
+
+              {/* Display selected pegawai information */}
+              {selectedPegawaiId && formData.full_name && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <h4 className="text-sm font-medium text-green-800 mb-2">Data Pegawai Terpilih:</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium text-green-700">Nama:</span>
+                      <span className="ml-2 text-green-600">{formData.full_name}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-green-700">NIP:</span>
+                      <span className="ml-2 text-green-600">{formData.nip}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-green-700">Jabatan:</span>
+                      <span className="ml-2 text-green-600">{formData.position || 'Tidak ada jabatan'}</span>
+                    </div>
+                    <div>
+                      <span className="font-medium text-green-700">Unit Kerja:</span>
+                      <span className="ml-2 text-green-600">{formData.department || 'Tidak ada unit kerja'}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+          
+          <Card className={!isUserInfoComplete(formData) ? 'opacity-50 pointer-events-none bg-gray-50' : 'bg-white'}>
+            <CardHeader>
+              <CardTitle className="flex items-center justify-between">
+                <span className={!isUserInfoComplete(formData) ? 'text-gray-400' : 'text-gray-900'}>
+                  Account Information
+                </span>
+                {!isUserInfoComplete(formData) && (
+                  <span className="text-sm text-gray-500 font-normal">
+                    Pilih pegawai terlebih dahulu
+                  </span>
+                )}
+                {isUserInfoComplete(formData) && (
+                  <span className="text-sm text-green-600 font-normal">
+                    ✓ Siap diisi
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              
+              {isUserInfoComplete(formData) && (
+                <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                  <div className="flex items-center">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-green-400" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-green-700">
+                        <strong>Siap!</strong> Data pegawai telah dipilih. Silakan lengkapi informasi akun di bawah ini.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="username">Username *</Label>
@@ -79,49 +173,6 @@ export default function NewUserPage() {
                 )}
               </div>
 
-              <div>
-                <Label htmlFor="full_name">Full Name *</Label>
-                <Input
-                  id="full_name"
-                  value={formData.full_name || ''}
-                  onChange={(e) => setFormData({...formData, full_name: e.target.value})}
-                  placeholder="Enter full name"
-                  className={errors.full_name ? 'border-red-500' : ''}
-                />
-                {errors.full_name && (
-                  <p className="text-sm text-red-500 mt-1">{errors.full_name}</p>
-                )}
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="position">Position</Label>
-                  <Input
-                    id="position"
-                    value={formData.position || ''}
-                    onChange={(e) => setFormData({...formData, position: e.target.value})}
-                    placeholder="Enter position"
-                    className={errors.position ? 'border-red-500' : ''}
-                  />
-                  {errors.position && (
-                    <p className="text-sm text-red-500 mt-1">{errors.position}</p>
-                  )}
-                </div>
-
-                <div>
-                  <Label htmlFor="department">Department</Label>
-                  <Input
-                    id="department"
-                    value={formData.department || ''}
-                    onChange={(e) => setFormData({...formData, department: e.target.value})}
-                    placeholder="Enter department"
-                    className={errors.department ? 'border-red-500' : ''}
-                  />
-                  {errors.department && (
-                    <p className="text-sm text-red-500 mt-1">{errors.department}</p>
-                  )}
-                </div>
-              </div>
 
               <div>
                 <Label htmlFor="role">Role *</Label>
