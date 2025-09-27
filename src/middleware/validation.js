@@ -53,8 +53,6 @@ const schemas = {
 
   updateUser: Joi.object({
     full_name: Joi.string().min(2).max(100).optional(),
-    position: Joi.string().max(100).optional(),
-    department: Joi.string().max(100).optional(),
     role: Joi.string().valid('user', 'admin', 'superadmin').optional(),
     is_active: Joi.boolean().optional()
   }),

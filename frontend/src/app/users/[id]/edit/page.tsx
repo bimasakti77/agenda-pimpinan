@@ -11,7 +11,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import PegawaiDropdown from '@/components/PegawaiDropdown';
 
 interface User {
   id: number;
@@ -29,7 +28,6 @@ export default function EditUserPage() {
   const router = useRouter();
   const params = useParams();
   const userId = params.id as string;
-  const [selectedPegawaiId, setSelectedPegawaiId] = useState<string>('');
 
   const { data: user, loading, error } = useApi<User>(`/users/${userId}`);
 
@@ -83,41 +81,6 @@ export default function EditUserPage() {
               <CardTitle>User Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="pegawai">Pilih Pegawai</Label>
-                <PegawaiDropdown
-                  value={selectedPegawaiId || ""}
-                  onValueChange={(value) => {
-                    setSelectedPegawaiId(value || "");
-                    // Reset form data when changing pegawai
-                    if (!value) {
-                      setFormData({
-                        ...formData,
-                        nip: '',
-                        full_name: formData.full_name, // Keep existing name
-                        position: formData.position, // Keep existing position
-                        department: formData.department // Keep existing department
-                      });
-                    }
-                  }}
-                  onPegawaiSelect={(pegawai) => {
-                    if (pegawai) {
-                      setFormData({
-                        ...formData,
-                        nip: pegawai.NIP,
-                        full_name: pegawai.Nama,
-                        position: pegawai.Jabatan || formData.position,
-                        department: pegawai.SatkerID || formData.department
-                      });
-                    }
-                  }}
-                  placeholder="Pilih pegawai untuk update data"
-                />
-                <p className="text-sm text-gray-500 mt-1">
-                  Pilih pegawai untuk mengupdate NIP, nama, jabatan, dan unit kerja
-                </p>
-              </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="username">Username *</Label>
@@ -151,13 +114,11 @@ export default function EditUserPage() {
                   <Input
                     id="nip"
                     value={formData.nip || ''}
-                    onChange={(e) => setFormData({...formData, nip: e.target.value})}
-                    placeholder="Enter NIP (optional)"
-                    className={errors.nip ? 'border-red-500' : ''}
+                    disabled
+                    placeholder="NIP cannot be changed"
+                    className="bg-gray-50 text-gray-500 cursor-not-allowed"
                   />
-                  {errors.nip && (
-                    <p className="text-sm text-red-500 mt-1">{errors.nip}</p>
-                  )}
+                  <p className="text-xs text-gray-500 mt-1">NIP cannot be modified after creation</p>
                 </div>
 
                 <div>
@@ -181,13 +142,11 @@ export default function EditUserPage() {
                   <Input
                     id="position"
                     value={formData.position || ''}
-                    onChange={(e) => setFormData({...formData, position: e.target.value})}
-                    placeholder="Enter position"
-                    className={errors.position ? 'border-red-500' : ''}
+                    disabled
+                    placeholder="Position cannot be changed"
+                    className="bg-gray-50 text-gray-500 cursor-not-allowed"
                   />
-                  {errors.position && (
-                    <p className="text-sm text-red-500 mt-1">{errors.position}</p>
-                  )}
+                  <p className="text-xs text-gray-500 mt-1">Position cannot be modified after creation</p>
                 </div>
 
                 <div>
@@ -195,13 +154,11 @@ export default function EditUserPage() {
                   <Input
                     id="department"
                     value={formData.department || ''}
-                    onChange={(e) => setFormData({...formData, department: e.target.value})}
-                    placeholder="Enter department"
-                    className={errors.department ? 'border-red-500' : ''}
+                    disabled
+                    placeholder="Department cannot be changed"
+                    className="bg-gray-50 text-gray-500 cursor-not-allowed"
                   />
-                  {errors.department && (
-                    <p className="text-sm text-red-500 mt-1">{errors.department}</p>
-                  )}
+                  <p className="text-xs text-gray-500 mt-1">Department cannot be modified after creation</p>
                 </div>
               </div>
 

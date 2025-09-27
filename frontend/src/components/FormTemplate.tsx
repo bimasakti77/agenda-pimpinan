@@ -48,6 +48,9 @@ export const FormTemplate: React.FC<FormTemplateProps> = ({
         delete dataToSend.id;
         delete dataToSend.username;
         delete dataToSend.email;
+        delete dataToSend.nip;
+        delete dataToSend.position;
+        delete dataToSend.department;
         delete dataToSend.created_at;
         delete dataToSend.updated_at;
       }
