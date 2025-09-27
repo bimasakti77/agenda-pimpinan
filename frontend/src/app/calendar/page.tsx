@@ -27,6 +27,8 @@ interface Agenda {
   created_by_name: string;
   attendees: string[];
   notes?: string;
+  nomor_surat: string;
+  surat_undangan: string;
 }
 
 export default function CalendarPage() {
@@ -81,18 +83,20 @@ export default function CalendarPage() {
       const endpoint = buildEndpoint('/agenda', params);
       const result = await apiService.get(endpoint);
       
-      
       // Handle different response structures
       if (result) {
-        if (result.agenda && Array.isArray(result.agenda)) {
-          // Response has agenda property (correct structure)
+        if (result.data && result.data.agenda && Array.isArray(result.data.agenda)) {
+          // Response has data.agenda property (correct structure)
+          setAgendas(result.data.agenda);
+        } else if (result.agenda && Array.isArray(result.agenda)) {
+          // Response has agenda property (fallback structure)
           setAgendas(result.agenda);
         } else if (Array.isArray(result)) {
           // Response is directly an array
           setAgendas(result);
         } else {
           // Fallback: try to find agenda in the response
-          setAgendas(result.agenda || []);
+          setAgendas(result.data?.agenda || result.agenda || []);
         }
       } else {
         setAgendas([]);

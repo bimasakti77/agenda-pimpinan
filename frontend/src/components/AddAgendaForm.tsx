@@ -33,6 +33,8 @@ interface AgendaFormData {
   location: string;
   priority: string;
   attendees: string;
+  nomor_surat: string;
+  surat_undangan: string;
 }
 
 export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddAgendaFormProps) {
@@ -44,7 +46,9 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
     end_time: "",
     location: "",
     priority: "medium",
-    attendees: ""
+    attendees: "",
+    nomor_surat: "",
+    surat_undangan: ""
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Partial<AgendaFormData>>({});
@@ -87,6 +91,14 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
       newErrors.location = "Lokasi harus diisi";
     }
 
+    if (!formData.nomor_surat.trim()) {
+      newErrors.nomor_surat = "Nomor surat harus diisi";
+    }
+
+    if (!formData.surat_undangan.trim()) {
+      newErrors.surat_undangan = "Surat undangan harus diisi";
+    }
+
     // Validate time logic
     if (formData.start_time && formData.end_time) {
       const startTime = new Date(`2000-01-01T${formData.start_time}`);
@@ -127,6 +139,14 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
       newErrors.location = "Lokasi harus diisi";
     }
 
+    if (!formData.nomor_surat.trim()) {
+      newErrors.nomor_surat = "Nomor surat harus diisi";
+    }
+
+    if (!formData.surat_undangan.trim()) {
+      newErrors.surat_undangan = "Surat undangan harus diisi";
+    }
+
     // Validate time logic
     if (formData.start_time && formData.end_time) {
       const startTime = new Date(`2000-01-01T${formData.start_time}`);
@@ -149,6 +169,8 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
       if (newErrors.start_time) errorMessages.push(newErrors.start_time);
       if (newErrors.end_time) errorMessages.push(newErrors.end_time);
       if (newErrors.location) errorMessages.push(newErrors.location);
+      if (newErrors.nomor_surat) errorMessages.push(newErrors.nomor_surat);
+      if (newErrors.surat_undangan) errorMessages.push(newErrors.surat_undangan);
       
       const errorMessage = errorMessages.join(', ');
       
@@ -194,6 +216,8 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
         location: formData.location.trim(),
         priority: formData.priority,
         attendees: attendeesArray,
+        nomor_surat: formData.nomor_surat.trim(),
+        surat_undangan: formData.surat_undangan.trim(),
         // REMARK: Status default untuk backward compatibility dengan backend
         // Status acara akan dihitung dinamis di frontend berdasarkan waktu agenda
         // Default ini hanya untuk memastikan backend tidak error dan database schema tetap konsisten
@@ -220,7 +244,9 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
         end_time: "",
         location: "",
         priority: "medium",
-        attendees: ""
+        attendees: "",
+        nomor_surat: "",
+        surat_undangan: ""
       });
       setErrors({});
 
@@ -256,7 +282,9 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
         end_time: "",
         location: "",
         priority: "medium",
-        attendees: ""
+        attendees: "",
+        nomor_surat: "",
+        surat_undangan: ""
       });
       setErrors({});
       onClose();
@@ -321,6 +349,46 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
                   rows={3}
                 />
+              </div>
+
+              <div>
+                <Label htmlFor="nomor_surat" className="text-sm font-medium">
+                  Nomor Surat *
+                </Label>
+                <Input
+                  id="nomor_surat"
+                  type="text"
+                  placeholder="Masukkan nomor surat (contoh: 001/KUMHAM/2024)"
+                  value={formData.nomor_surat}
+                  onChange={(e) => handleInputChange("nomor_surat", e.target.value)}
+                  className={errors.nomor_surat ? "border-red-500" : ""}
+                />
+                {errors.nomor_surat && (
+                  <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.nomor_surat}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <Label htmlFor="surat_undangan" className="text-sm font-medium">
+                  Surat Undangan *
+                </Label>
+                <textarea
+                  id="surat_undangan"
+                  placeholder="Masukkan isi surat undangan"
+                  value={formData.surat_undangan}
+                  onChange={(e) => handleInputChange("surat_undangan", e.target.value)}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none ${errors.surat_undangan ? "border-red-500" : "border-gray-300"}`}
+                  rows={4}
+                />
+                {errors.surat_undangan && (
+                  <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    {errors.surat_undangan}
+                  </p>
+                )}
               </div>
             </CardContent>
           </Card>

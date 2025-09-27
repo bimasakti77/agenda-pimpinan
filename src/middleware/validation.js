@@ -74,7 +74,9 @@ const schemas = {
     priority: Joi.string().valid('low', 'medium', 'high').optional(),
     category: Joi.string().max(50).optional(),
     notes: Joi.string().max(1000).optional(),
-    attendance_status: Joi.string().valid('attending', 'not_attending', 'represented').optional()
+    attendance_status: Joi.string().valid('attending', 'not_attending', 'represented').optional(),
+    nomor_surat: Joi.string().max(100).required(),
+    surat_undangan: Joi.string().max(2000).required()
   }),
 
   updateAgenda: Joi.object({
@@ -89,7 +91,9 @@ const schemas = {
     priority: Joi.string().valid('low', 'medium', 'high').optional(),
     category: Joi.string().max(50).optional(),
     notes: Joi.string().max(1000).optional(),
-    attendance_status: Joi.string().valid('attending', 'not_attending', 'represented').optional()
+    attendance_status: Joi.string().valid('attending', 'not_attending', 'represented').optional(),
+    nomor_surat: Joi.string().max(100).optional(),
+    surat_undangan: Joi.string().max(2000).optional()
   }),
 
   // Query validation schemas

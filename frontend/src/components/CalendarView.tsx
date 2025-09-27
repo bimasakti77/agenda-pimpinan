@@ -32,6 +32,8 @@ interface Agenda {
   attendees: string[];
   notes?: string;
   attendance_status?: string;
+  nomor_surat: string;
+  surat_undangan: string;
 }
 
 interface CalendarEvent {
@@ -653,13 +655,37 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
                     </div>
                   </div>
 
-                  {/* Deskripsi */}
-                  {selectedEvent.description && (
-                    <div>
-                      <label className="font-medium text-gray-700 text-sm">Deskripsi</label>
-                      <p className="text-gray-700 text-sm mt-1 leading-relaxed">{selectedEvent.description}</p>
+                  {/* Informasi Surat */}
+                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                    <h4 className="font-semibold text-yellow-800 text-sm mb-3 flex items-center gap-2">
+                      📄 Informasi Surat
+                    </h4>
+                    <div className="space-y-3">
+                      <div>
+                        <label className="font-medium text-gray-700 text-sm">Nomor Surat</label>
+                        <p className="text-gray-900 text-sm font-mono bg-white px-2 py-1 rounded border">
+                          {selectedEvent.nomor_surat || "Tidak ada nomor surat"}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="font-medium text-gray-700 text-sm">Isi Surat Undangan</label>
+                        <div className="bg-white border rounded-lg p-3 max-h-32 overflow-y-auto">
+                          <p className="text-gray-800 text-sm leading-relaxed whitespace-pre-wrap">
+                            {selectedEvent.surat_undangan || "Tidak ada isi surat undangan"}
+                          </p>
+                        </div>
+                      </div>
+                      {/* Deskripsi */}
+                      {selectedEvent.description && (
+                        <div>
+                          <label className="font-medium text-gray-700 text-sm">Deskripsi</label>
+                          <div className="bg-white border rounded-lg p-3">
+                            <p className="text-gray-800 text-sm leading-relaxed">{selectedEvent.description}</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                   
                   {/* Catatan Detail Kehadiran */}
                   {selectedEvent.notes && (

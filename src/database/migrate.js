@@ -1,199 +1,235 @@
-const pool = require('../config/database');
+// Load environment variables
+require('dotenv').config();
 
-const migrations = [
-  {
-    name: 'create_users_table',
-    query: `
-      CREATE TABLE IF NOT EXISTS users (
-        id SERIAL PRIMARY KEY,
-        username VARCHAR(50) UNIQUE NOT NULL,
-        email VARCHAR(100) UNIQUE NOT NULL,
-        password VARCHAR(255) NOT NULL,
-        role VARCHAR(20) NOT NULL DEFAULT 'user' CHECK (role IN ('user', 'admin', 'superadmin')),
-        full_name VARCHAR(100) NOT NULL,
-        position VARCHAR(100),
-        department VARCHAR(100),
-        is_active BOOLEAN DEFAULT true,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `
-  },
-  {
-    name: 'create_agenda_table',
-    query: `
-      CREATE TABLE IF NOT EXISTS agenda (
-        id SERIAL PRIMARY KEY,
-        title VARCHAR(200) NOT NULL,
-        description TEXT,
-        date DATE NOT NULL,
-        start_time TIME,
-        end_time TIME,
-        location VARCHAR(200),
-        attendees JSONB DEFAULT '[]',
-        status VARCHAR(20) DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'in_progress', 'completed', 'cancelled')),
-        priority VARCHAR(10) DEFAULT 'medium' CHECK (priority IN ('low', 'medium', 'high')),
-        category VARCHAR(50),
-        notes TEXT,
-        created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-        updated_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `
-  },
-  {
-    name: 'create_indexes',
-    query: `
-      CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
-      CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
-      CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);
-      CREATE INDEX IF NOT EXISTS idx_agenda_date ON agenda(date);
-      CREATE INDEX IF NOT EXISTS idx_agenda_status ON agenda(status);
-      CREATE INDEX IF NOT EXISTS idx_agenda_priority ON agenda(priority);
-      CREATE INDEX IF NOT EXISTS idx_agenda_created_by ON agenda(created_by);
-      CREATE INDEX IF NOT EXISTS idx_agenda_category ON agenda(category);
-    `
-  },
-  {
-    name: 'create_updated_at_trigger_function',
-    query: `
-      CREATE OR REPLACE FUNCTION update_updated_at_column()
-      RETURNS TRIGGER AS $$
-      BEGIN
-        NEW.updated_at = CURRENT_TIMESTAMP;
-        RETURN NEW;
-      END;
-      $$ language 'plpgsql';
-    `
-  },
-  {
-    name: 'create_updated_at_triggers',
-    query: `
-      DROP TRIGGER IF EXISTS update_users_updated_at ON users;
-      CREATE TRIGGER update_users_updated_at
-        BEFORE UPDATE ON users
-        FOR EACH ROW
-        EXECUTE FUNCTION update_updated_at_column();
-      
-      DROP TRIGGER IF EXISTS update_agenda_updated_at ON agenda;
-      CREATE TRIGGER update_agenda_updated_at
-        BEFORE UPDATE ON agenda
-        FOR EACH ROW
-        EXECUTE FUNCTION update_updated_at_column();
-    `
-  },
-  {
-    name: 'add_attendance_status_to_agenda',
-    query: `
-      ALTER TABLE agenda 
-      ADD COLUMN IF NOT EXISTS attendance_status VARCHAR(20) 
-      CHECK (attendance_status IN ('attending', 'not_attending', 'represented'));
-    `
-  },
-  {
-    name: 'add_nip_to_users',
-    query: `
-      ALTER TABLE users 
-      ADD COLUMN IF NOT EXISTS nip VARCHAR(50);
-    `
-  },
-  {
-    name: 'create_users_nip_index',
-    query: `
-      CREATE INDEX IF NOT EXISTS idx_users_nip ON users(nip);
-    `
-  },
-  {
-    name: 'create_simpeg_pegawai_table',
-    query: `
-      CREATE TABLE IF NOT EXISTS "simpeg_Pegawai" (
-        "NIP" VARCHAR(50) PRIMARY KEY,
-        "NIK" VARCHAR(100),
-        "Nama" VARCHAR(150),
-        "GelarDepan" VARCHAR(50),
-        "GelarBelakang" VARCHAR(50),
-        "EmailDinas" VARCHAR(150),
-        "Telepon" VARCHAR(150),
-        "TempatLahir" VARCHAR(100),
-        "TglLahir" DATE,
-        "JenisKelamin" VARCHAR(20),
-        "Agama" VARCHAR(10),
-        "StatusKawin" VARCHAR(50),
-        "Foto" VARCHAR(150),
-        "PendidikanTerakhir" VARCHAR(100),
-        "SatkerID" VARCHAR(25),
-        "KodeJabatan" VARCHAR(50),
-        "Jabatan" VARCHAR(500),
-        "TipePegawai" VARCHAR(10),
-        "StatusPegawai" VARCHAR(10),
-        "Pangkat" VARCHAR(50),
-        "RowNumber" INTEGER
-      );
-    `
-  },
-  {
-    name: 'create_simpeg_pegawai_indexes',
-    query: `
-      CREATE INDEX IF NOT EXISTS idx_simpeg_pegawai_nama ON "simpeg_Pegawai"("Nama");
-      CREATE INDEX IF NOT EXISTS idx_simpeg_pegawai_status ON "simpeg_Pegawai"("StatusPegawai");
-      CREATE INDEX IF NOT EXISTS idx_simpeg_pegawai_satker ON "simpeg_Pegawai"("SatkerID");
-      CREATE INDEX IF NOT EXISTS idx_simpeg_pegawai_jabatan ON "simpeg_Pegawai"("Jabatan");
-    `
-  }
-];
+const { Pool } = require('pg');
+const fs = require('fs');
+const path = require('path');
+const readline = require('readline');
+
+// Function to get password from user input
+function getPasswordFromInput() {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+    
+    rl.question('🔐 Enter PostgreSQL password: ', (password) => {
+      rl.close();
+      resolve(password);
+    });
+  });
+}
+
+// Function to create database pool with custom config
+function createDatabasePool(customConfig = {}) {
+  const config = {
+    host: process.env.DB_HOST || 'localhost',
+    port: process.env.DB_PORT || 5432,
+    database: process.env.DB_NAME || 'agenda_pimpinan',
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'admin',
+    ...customConfig
+  };
+  
+  console.log(`🔗 Connecting to database: ${config.host}:${config.port}/${config.database} as user: ${config.user}`);
+  return new Pool(config);
+}
 
 async function runMigrations() {
+  let pool;
+  let client;
+  
   try {
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Starting database migrations...');
+    // Try to create pool with environment variables first
+    pool = createDatabasePool();
+    client = await pool.connect();
+    
+    console.log('🚀 Starting database migrations...');
+    
+    // Test database connection first
+    await client.query('SELECT 1');
+    console.log('✅ Database connection successful');
+    
+    // Run the migration process
+    await runMigrationProcess(client);
+    
+  } catch (error) {
+    // If connection failed, try with manual password input
+    if (error.message.includes('password authentication failed') || 
+        error.message.includes('authentication failed')) {
+      
+      console.log('⚠️  Database authentication failed with environment variables');
+      console.log('🔐 Please enter database credentials manually:');
+      
+      try {
+        // Close existing connection if any
+        if (client) {
+          client.release();
+        }
+        if (pool) {
+          await pool.end();
+        }
+        
+        // Get password from user input
+        const password = await getPasswordFromInput();
+        
+        // Create new pool with manual password
+        pool = createDatabasePool({ password });
+        client = await pool.connect();
+        
+        console.log('✅ Database connection successful with manual password');
+        
+        // Continue with migration process
+        await runMigrationProcess(client);
+        
+      } catch (manualError) {
+        console.error('❌ Manual authentication also failed:', manualError.message);
+        throw manualError;
+      }
+    } else {
+      console.error('❌ Migration failed:', error.message);
+      console.error('🔍 Error details:', error);
+      throw error;
+    }
+  } finally {
+    if (client) {
+      client.release();
+    }
+    if (pool) {
+      await pool.end();
+    }
+  }
+}
+
+// Separate function for the actual migration process
+async function runMigrationProcess(client) {
+  try {
+    // Create migrations table if it doesn't exist
+    try {
+      await client.query(`
+        CREATE TABLE IF NOT EXISTS migrations (
+          id SERIAL PRIMARY KEY,
+          filename VARCHAR(255) NOT NULL UNIQUE,
+          executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      console.log('✅ Migrations table ready');
+    } catch (error) {
+      console.log('⚠️  Could not create migrations table:', error.message);
+      // Continue without migrations table tracking
     }
     
-    // Create migrations table if it doesn't exist
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS migrations (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) UNIQUE NOT NULL,
-        executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
+    // Get list of migration files
+    const migrationsDir = path.join(__dirname, 'migrations');
     
-    // Get executed migrations
-    const executedMigrations = await pool.query('SELECT name FROM migrations');
-    const executedNames = executedMigrations.rows.map(row => row.name);
+    if (!fs.existsSync(migrationsDir)) {
+      console.log('📁 Creating migrations directory...');
+      fs.mkdirSync(migrationsDir, { recursive: true });
+    }
+    
+    const migrationFiles = fs.readdirSync(migrationsDir)
+      .filter(file => file.endsWith('.sql'))
+      .sort();
+    
+    if (migrationFiles.length === 0) {
+      console.log('⚠️  No migration files found in migrations directory');
+      return;
+    }
+    
+    console.log(`📋 Found ${migrationFiles.length} migration files`);
+    
+    // Get already executed migrations
+    let executedFilenames = [];
+    try {
+      const executedMigrations = await client.query(`
+        SELECT filename FROM migrations ORDER BY executed_at
+      `);
+      executedFilenames = executedMigrations.rows.map(row => row.filename);
+      console.log(`📝 Found ${executedFilenames.length} previously executed migrations`);
+    } catch (error) {
+      console.log('📝 No migrations table found or error reading it, will run all migrations');
+      executedFilenames = [];
+    }
     
     // Run pending migrations
-    for (const migration of migrations) {
-      if (!executedNames.includes(migration.name)) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`Running migration: ${migration.name}`);
+    let executedCount = 0;
+    
+    for (const filename of migrationFiles) {
+      if (executedFilenames.includes(filename)) {
+        console.log(`⏭️  Skipping ${filename} (already executed)`);
+        continue;
+      }
+      
+      console.log(`🔄 Executing migration: ${filename}`);
+      
+      const migrationPath = path.join(migrationsDir, filename);
+      const migrationSQL = fs.readFileSync(migrationPath, 'utf8');
+      
+      // Execute migration with better error handling
+      try {
+        await client.query(migrationSQL);
+        console.log(`✅ Migration ${filename} executed successfully`);
+        
+        // Record migration as executed
+        try {
+          await client.query(`
+            INSERT INTO migrations (filename) VALUES ($1)
+          `, [filename]);
+          console.log(`📝 Recorded ${filename} in migrations table`);
+        } catch (recordError) {
+          console.log(`⚠️  Could not record migration ${filename} in migrations table: ${recordError.message}`);
+          // Continue even if recording fails
         }
-        await pool.query(migration.query);
-        await pool.query('INSERT INTO migrations (name) VALUES ($1)', [migration.name]);
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`✓ Migration ${migration.name} completed`);
-        }
-      } else {
-        if (process.env.NODE_ENV === 'development') {
-          console.log(`- Migration ${migration.name} already executed`);
+        
+        executedCount++;
+      } catch (migrationError) {
+        // Check if it's a "column already exists" error
+        if (migrationError.message.includes('already exists') || 
+            migrationError.message.includes('sudah ada')) {
+          console.log(`⚠️  Migration ${filename} skipped - columns already exist`);
+          
+          // Still try to record it as executed to avoid future attempts
+          try {
+            await client.query(`
+              INSERT INTO migrations (filename) VALUES ($1)
+            `, [filename]);
+            console.log(`📝 Recorded ${filename} as already executed`);
+          } catch (recordError) {
+            console.log(`⚠️  Could not record migration ${filename}: ${recordError.message}`);
+          }
+          
+          executedCount++;
+        } else {
+          console.error(`❌ Migration ${filename} failed: ${migrationError.message}`);
+          throw migrationError;
         }
       }
     }
     
-    if (process.env.NODE_ENV === 'development') {
-      console.log('All migrations completed successfully!');
+    if (executedCount === 0) {
+      console.log('✅ All migrations are up to date');
+    } else {
+      console.log(`🎉 Successfully executed ${executedCount} migrations`);
     }
+    
   } catch (error) {
-    console.error('Migration failed:', error);
-    process.exit(1);
-  } finally {
-    await pool.end();
+    console.error('❌ Migration process failed:', error.message);
+    throw error;
   }
 }
 
 // Run migrations if this file is executed directly
 if (require.main === module) {
-  runMigrations();
+  runMigrations()
+    .then(() => {
+      console.log('🎉 Migration process completed!');
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error('💥 Migration process failed:', error);
+      process.exit(1);
+    });
 }
 
 module.exports = { runMigrations };

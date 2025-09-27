@@ -15,6 +15,8 @@ class Agenda {
     this.category = data.category;
     this.notes = data.notes;
     this.attendance_status = data.attendance_status;
+    this.nomor_surat = data.nomor_surat;
+    this.surat_undangan = data.surat_undangan;
     this.created_by = data.created_by;
     this.updated_by = data.updated_by;
     this.created_at = data.created_at;
@@ -36,21 +38,23 @@ class Agenda {
       category,
       notes,
       attendance_status,
+      nomor_surat,
+      surat_undangan,
       created_by
     } = agendaData;
     
     const query = `
       INSERT INTO agenda (
         title, description, date, start_time, end_time, location,
-        attendees, status, priority, category, notes, attendance_status, created_by
+        attendees, status, priority, category, notes, attendance_status, nomor_surat, surat_undangan, created_by
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *
     `;
     
     const values = [
       title, description, date, start_time, end_time, location,
-      JSON.stringify(attendees), status, priority, category, notes, attendance_status, created_by
+      JSON.stringify(attendees), status, priority, category, notes, attendance_status, nomor_surat, surat_undangan, created_by
     ];
     
     const result = await pool.query(query, values);
@@ -194,7 +198,6 @@ class Agenda {
     const agenda = agendaResult.rows.map(row => {
       const agendaItem = new Agenda(row);
       
-      
       // Safely parse attendees JSON
       if (agendaItem.attendees && agendaItem.attendees !== 'undefined' && agendaItem.attendees !== 'null') {
         if (typeof agendaItem.attendees === 'string') {
@@ -215,7 +218,9 @@ class Agenda {
       }
       agendaItem.created_by_name = row.created_by_name;
       agendaItem.updated_by_name = row.updated_by_name;
-      return agendaItem;
+      
+      // Return as JSON object to ensure all fields are included
+      return agendaItem.toJSON();
     });
     
     const total = parseInt(countResult.rows[0].count);
@@ -235,7 +240,8 @@ class Agenda {
   async update(updateData, updated_by) {
     const allowedFields = [
       'title', 'description', 'date', 'start_time', 'end_time',
-      'location', 'attendees', 'status', 'priority', 'category', 'notes', 'attendance_status'
+      'location', 'attendees', 'status', 'priority', 'category', 'notes', 'attendance_status',
+      'nomor_surat', 'surat_undangan'
     ];
     
     const updates = [];
@@ -359,6 +365,8 @@ class Agenda {
       category: this.category,
       notes: this.notes,
       attendance_status: this.attendance_status,
+      nomor_surat: this.nomor_surat,
+      surat_undangan: this.surat_undangan,
       created_by: this.created_by,
       updated_by: this.updated_by,
       created_at: this.created_at,

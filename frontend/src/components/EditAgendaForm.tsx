@@ -25,6 +25,8 @@ interface Agenda {
   created_by_name: string;
   attendees: string[];
   notes?: string;
+  nomor_surat: string;
+  surat_undangan: string;
 }
 
 interface EditAgendaFormProps {
@@ -40,7 +42,9 @@ export default function EditAgendaForm({ isOpen, onClose, onSuccess, agenda }: E
     start_time: "",
     end_time: "",
     location: "",
-    description: ""
+    description: "",
+    nomor_surat: "",
+    surat_undangan: ""
   });
   const [isLoading, setIsLoading] = useState(false);
 
@@ -52,7 +56,9 @@ export default function EditAgendaForm({ isOpen, onClose, onSuccess, agenda }: E
         start_time: agenda.start_time || "",
         end_time: agenda.end_time || "",
         location: agenda.location || "",
-        description: agenda.description || ""
+        description: agenda.description || "",
+        nomor_surat: agenda.nomor_surat || "",
+        surat_undangan: agenda.surat_undangan || ""
       });
     }
   }, [agenda]);
@@ -156,6 +162,15 @@ export default function EditAgendaForm({ isOpen, onClose, onSuccess, agenda }: E
         updateData.description = formData.description.trim();
       }
 
+      // Include nomor surat and surat undangan
+      if (formData.nomor_surat.trim()) {
+        updateData.nomor_surat = formData.nomor_surat.trim();
+      }
+      
+      if (formData.surat_undangan.trim()) {
+        updateData.surat_undangan = formData.surat_undangan.trim();
+      }
+
       const result = await apiService.put(API_ENDPOINTS.AGENDA.UPDATE(agenda.id), updateData);
 
       toast.success("Agenda berhasil diupdate");
@@ -231,6 +246,31 @@ export default function EditAgendaForm({ isOpen, onClose, onSuccess, agenda }: E
                   placeholder="Masukkan lokasi agenda"
                   value={formData.location}
                   onChange={(e) => handleInputChange("location", e.target.value)}
+                />
+              </div>
+
+              {/* Nomor Surat */}
+              <div>
+                <Label htmlFor="nomor_surat">Nomor Surat</Label>
+                <Input
+                  id="nomor_surat"
+                  type="text"
+                  placeholder="Masukkan nomor surat (contoh: 001/KUMHAM/2024)"
+                  value={formData.nomor_surat}
+                  onChange={(e) => handleInputChange("nomor_surat", e.target.value)}
+                />
+              </div>
+
+              {/* Surat Undangan */}
+              <div>
+                <Label htmlFor="surat_undangan">Surat Undangan</Label>
+                <textarea
+                  id="surat_undangan"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+                  rows={4}
+                  placeholder="Masukkan isi surat undangan"
+                  value={formData.surat_undangan}
+                  onChange={(e) => handleInputChange("surat_undangan", e.target.value)}
                 />
               </div>
 
