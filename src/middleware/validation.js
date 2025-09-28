@@ -69,14 +69,44 @@ const schemas = {
     start_time: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
     end_time: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
     location: Joi.string().max(200).optional(),
-    attendees: Joi.array().items(Joi.string()).optional(),
     status: Joi.string().valid('scheduled', 'in_progress', 'completed', 'cancelled').optional(),
     priority: Joi.string().valid('low', 'medium', 'high').optional(),
     category: Joi.string().max(50).optional(),
     notes: Joi.string().max(1000).optional(),
     attendance_status: Joi.string().valid('attending', 'not_attending', 'represented').optional(),
     nomor_surat: Joi.string().max(100).required(),
-    surat_undangan: Joi.string().max(2000).required()
+    surat_undangan: Joi.string().max(2000).required(),
+    undangan: Joi.array().items(
+      Joi.object({
+        pegawai_id: Joi.string().allow(null), // NIP from simpeg_Pegawai table
+        nama: Joi.string().min(1).max(255).required(),
+        kategori: Joi.string().valid('internal', 'eksternal').required(),
+        nip: Joi.string().allow(null), // NIP from simpeg_Pegawai
+        // Allow additional fields that might be sent from frontend
+        pegawai_jabatan: Joi.string().optional(),
+        pegawai_nama: Joi.string().optional()
+      }).custom((value, helpers) => {
+        // Custom validation for undangan
+        if (value.kategori === 'internal' && !value.pegawai_id) {
+          return helpers.error('any.invalid', { message: 'pegawai_id is required for internal kategori' });
+        }
+        if (value.kategori === 'eksternal' && value.pegawai_id) {
+          return helpers.error('any.invalid', { message: 'pegawai_id should be null for eksternal kategori' });
+        }
+        return value;
+      })
+    ).min(1).required().custom((value, helpers) => {
+      // Check for duplicates
+      const seen = new Set();
+      for (const item of value) {
+        const key = item.kategori === 'internal' ? `internal_${item.pegawai_id}` : `eksternal_${item.nama}`;
+        if (seen.has(key)) {
+          return helpers.error('any.invalid', { message: 'Duplicate undangan found' });
+        }
+        seen.add(key);
+      }
+      return value;
+    })
   }),
 
   updateAgenda: Joi.object({
@@ -86,14 +116,45 @@ const schemas = {
     start_time: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
     end_time: Joi.string().pattern(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/).optional(),
     location: Joi.string().max(200).optional(),
-    attendees: Joi.array().items(Joi.string()).optional(),
     status: Joi.string().valid('scheduled', 'in_progress', 'completed', 'cancelled').optional(),
     priority: Joi.string().valid('low', 'medium', 'high').optional(),
     category: Joi.string().max(50).optional(),
     notes: Joi.string().max(1000).optional(),
     attendance_status: Joi.string().valid('attending', 'not_attending', 'represented').optional(),
     nomor_surat: Joi.string().max(100).optional(),
-    surat_undangan: Joi.string().max(2000).optional()
+    surat_undangan: Joi.string().max(2000).optional(),
+    undangan: Joi.array().items(
+      Joi.object({
+        pegawai_id: Joi.string().allow(null), // NIP from simpeg_Pegawai table
+        nama: Joi.string().min(1).max(255).required(),
+        kategori: Joi.string().valid('internal', 'eksternal').required(),
+        nip: Joi.string().allow(null), // NIP from simpeg_Pegawai
+        // Allow additional fields that might be sent from frontend
+        pegawai_jabatan: Joi.string().optional(),
+        pegawai_nama: Joi.string().optional()
+      }).custom((value, helpers) => {
+        // Custom validation for undangan
+        if (value.kategori === 'internal' && !value.pegawai_id) {
+          return helpers.error('any.invalid', { message: 'pegawai_id is required for internal kategori' });
+        }
+        if (value.kategori === 'eksternal' && value.pegawai_id) {
+          return helpers.error('any.invalid', { message: 'pegawai_id should be null for eksternal kategori' });
+        }
+        return value;
+      })
+    ).min(1).optional().custom((value, helpers) => {
+      if (!value || value.length === 0) return value;
+      // Check for duplicates
+      const seen = new Set();
+      for (const item of value) {
+        const key = item.kategori === 'internal' ? `internal_${item.pegawai_id}` : `eksternal_${item.nama}`;
+        if (seen.has(key)) {
+          return helpers.error('any.invalid', { message: 'Duplicate undangan found' });
+        }
+        seen.add(key);
+      }
+      return value;
+    })
   }),
 
   // Query validation schemas

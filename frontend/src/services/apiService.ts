@@ -139,7 +139,8 @@ class ApiService {
       const response = await httpClient.post<T>(endpoint, data, config);
       return response.data as T;
     } catch (error: any) {
-      throw new Error(error.message || 'Failed to create data');
+      // Preserve the original error with all its details
+      throw error;
     }
   }
 

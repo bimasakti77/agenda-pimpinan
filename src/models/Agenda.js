@@ -9,7 +9,6 @@ class Agenda {
     this.start_time = data.start_time;
     this.end_time = data.end_time;
     this.location = data.location;
-    this.attendees = data.attendees;
     this.status = data.status;
     this.priority = data.priority;
     this.category = data.category;
@@ -32,7 +31,6 @@ class Agenda {
       start_time,
       end_time,
       location,
-      attendees = [],
       status = 'scheduled',
       priority = 'medium',
       category,
@@ -40,36 +38,32 @@ class Agenda {
       attendance_status,
       nomor_surat,
       surat_undangan,
+      undangan = [],
       created_by
     } = agendaData;
     
     const query = `
       INSERT INTO agenda (
         title, description, date, start_time, end_time, location,
-        attendees, status, priority, category, notes, attendance_status, nomor_surat, surat_undangan, created_by
+        status, priority, category, notes, attendance_status, nomor_surat, surat_undangan, created_by
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING *
     `;
     
     const values = [
       title, description, date, start_time, end_time, location,
-      JSON.stringify(attendees), status, priority, category, notes, attendance_status, nomor_surat, surat_undangan, created_by
+      status, priority, category, notes, attendance_status, nomor_surat, surat_undangan, created_by
     ];
     
     const result = await pool.query(query, values);
     const agenda = new Agenda(result.rows[0]);
-    // Safely parse attendees JSON
-    if (agenda.attendees && agenda.attendees !== 'undefined' && agenda.attendees !== 'null') {
-      try {
-        agenda.attendees = JSON.parse(agenda.attendees);
-      } catch (error) {
-        console.warn('Failed to parse attendees JSON:', agenda.attendees);
-        agenda.attendees = [];
-      }
-    } else {
-      agenda.attendees = [];
+    
+    // Insert undangan if provided
+    if (undangan && undangan.length > 0) {
+      await Agenda.addUndangan(agenda.id, undangan);
     }
+    
     return agenda;
   }
 
@@ -89,24 +83,22 @@ class Agenda {
     }
     
     const agenda = new Agenda(result.rows[0]);
-    // Safely parse attendees JSON
-    if (agenda.attendees && agenda.attendees !== 'undefined' && agenda.attendees !== 'null') {
-      if (typeof agenda.attendees === 'string') {
-        try {
-          agenda.attendees = JSON.parse(agenda.attendees);
-        } catch (error) {
-          console.warn('Failed to parse attendees JSON:', agenda.attendees);
-          agenda.attendees = [];
-        }
-      } else if (Array.isArray(agenda.attendees)) {
-        // Already an array, no need to parse
-        agenda.attendees = agenda.attendees;
-      } else {
-        agenda.attendees = [];
-      }
-    } else {
-      agenda.attendees = [];
-    }
+    
+    // Get undangan data without JOIN to avoid simpeg_Pegawai issues
+    const undanganQuery = `
+      SELECT 
+        au.id,
+        au.pegawai_id,
+        au.nama,
+        au.kategori,
+        au.nip
+      FROM agenda_undangan au
+      WHERE au.agenda_id = $1
+      ORDER BY au.kategori, au.nama
+    `;
+    const undanganResult = await pool.query(undanganQuery, [id]);
+    agenda.undangan = undanganResult.rows;
+    
     agenda.created_by_name = result.rows[0].created_by_name;
     agenda.updated_by_name = result.rows[0].updated_by_name;
     return agenda;
@@ -195,33 +187,30 @@ class Agenda {
       pool.query(countQuery, values.slice(0, -2))
     ]);
     
-    const agenda = agendaResult.rows.map(row => {
+    const agenda = await Promise.all(agendaResult.rows.map(async (row) => {
       const agendaItem = new Agenda(row);
       
-      // Safely parse attendees JSON
-      if (agendaItem.attendees && agendaItem.attendees !== 'undefined' && agendaItem.attendees !== 'null') {
-        if (typeof agendaItem.attendees === 'string') {
-          try {
-            agendaItem.attendees = JSON.parse(agendaItem.attendees);
-          } catch (error) {
-            console.warn('Failed to parse attendees JSON:', agendaItem.attendees);
-            agendaItem.attendees = [];
-          }
-        } else if (Array.isArray(agendaItem.attendees)) {
-          // Already an array, no need to parse
-          agendaItem.attendees = agendaItem.attendees;
-        } else {
-          agendaItem.attendees = [];
-        }
-      } else {
-        agendaItem.attendees = [];
-      }
       agendaItem.created_by_name = row.created_by_name;
       agendaItem.updated_by_name = row.updated_by_name;
       
+      // Get undangan data for each agenda
+      const undanganQuery = `
+        SELECT 
+          au.id,
+          au.pegawai_id,
+          au.nama,
+          au.kategori,
+          au.nip
+        FROM agenda_undangan au
+        WHERE au.agenda_id = $1
+        ORDER BY au.kategori, au.nama
+      `;
+      const undanganResult = await pool.query(undanganQuery, [row.id]);
+      agendaItem.undangan = undanganResult.rows;
+      
       // Return as JSON object to ensure all fields are included
       return agendaItem.toJSON();
-    });
+    }));
     
     const total = parseInt(countResult.rows[0].count);
     
@@ -240,7 +229,7 @@ class Agenda {
   async update(updateData, updated_by) {
     const allowedFields = [
       'title', 'description', 'date', 'start_time', 'end_time',
-      'location', 'attendees', 'status', 'priority', 'category', 'notes', 'attendance_status',
+      'location', 'status', 'priority', 'category', 'notes', 'attendance_status',
       'nomor_surat', 'surat_undangan'
     ];
     
@@ -250,13 +239,8 @@ class Agenda {
     
     for (const [key, value] of Object.entries(updateData)) {
       if (allowedFields.includes(key) && value !== undefined) {
-        if (key === 'attendees') {
-          updates.push(`${key} = $${paramCount}`);
-          values.push(JSON.stringify(value));
-        } else {
-          updates.push(`${key} = $${paramCount}`);
-          values.push(value);
-        }
+        updates.push(`${key} = $${paramCount}`);
+        values.push(value);
         paramCount++;
       }
     }
@@ -274,17 +258,6 @@ class Agenda {
     
     // Update current instance
     Object.assign(this, result.rows[0]);
-    // Safely parse attendees JSON
-    if (this.attendees && this.attendees !== 'undefined' && this.attendees !== 'null') {
-      try {
-        this.attendees = JSON.parse(this.attendees);
-      } catch (error) {
-        console.warn('Failed to parse attendees JSON:', this.attendees);
-        this.attendees = [];
-      }
-    } else {
-      this.attendees = [];
-    }
     return this;
   }
 
@@ -359,7 +332,6 @@ class Agenda {
       start_time: this.start_time,
       end_time: this.end_time,
       location: this.location,
-      attendees: this.attendees,
       status: this.status,
       priority: this.priority,
       category: this.category,
@@ -372,7 +344,8 @@ class Agenda {
       created_at: this.created_at,
       updated_at: this.updated_at,
       created_by_name: this.created_by_name,
-      updated_by_name: this.updated_by_name
+      updated_by_name: this.updated_by_name,
+      undangan: this.undangan || []
     };
   }
 
@@ -460,6 +433,83 @@ class Agenda {
     };
 
     return result;
+  }
+
+  // Add undangan to agenda
+  static async addUndangan(agendaId, undanganList) {
+    if (!undanganList || undanganList.length === 0) {
+      return [];
+    }
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      const insertedUndangan = [];
+      
+      for (const undangan of undanganList) {
+        const { pegawai_id, nama, kategori, nip } = undangan;
+        
+        const insertQuery = `
+          INSERT INTO agenda_undangan (agenda_id, pegawai_id, nama, kategori, nip)
+          VALUES ($1, $2, $3, $4, $5)
+          RETURNING *
+        `;
+        
+        const result = await client.query(insertQuery, [agendaId, pegawai_id, nama, kategori, nip]);
+        insertedUndangan.push(result.rows[0]);
+      }
+      
+      await client.query('COMMIT');
+      return insertedUndangan;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  // Update undangan for agenda
+  static async updateUndangan(agendaId, undanganList) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      
+      // Delete existing undangan
+      await client.query('DELETE FROM agenda_undangan WHERE agenda_id = $1', [agendaId]);
+      
+      // Insert new undangan
+      if (undanganList && undanganList.length > 0) {
+        await Agenda.addUndangan(agendaId, undanganList);
+      }
+      
+      await client.query('COMMIT');
+      return true;
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  // Get undangan for agenda
+  static async getUndangan(agendaId) {
+    const query = `
+      SELECT 
+        au.id,
+        au.pegawai_id,
+        au.nama,
+        au.kategori,
+        au.nip
+      FROM agenda_undangan au
+      WHERE au.agenda_id = $1
+      ORDER BY au.kategori, au.nama
+    `;
+    
+    const result = await pool.query(query, [agendaId]);
+    return result.rows;
   }
 }
 

@@ -18,6 +18,14 @@ import { API_ENDPOINTS } from "@/services/apiEndpoints";
 // Setup moment localizer
 const localizer = momentLocalizer(moment);
 
+interface UndanganItem {
+  id: number;
+  pegawai_id?: string;
+  nama: string;
+  kategori: 'internal' | 'eksternal';
+  nip?: string;
+}
+
 interface Agenda {
   id: number;
   title: string;
@@ -34,6 +42,7 @@ interface Agenda {
   attendance_status?: string;
   nomor_surat: string;
   surat_undangan: string;
+  undangan: UndanganItem[];
 }
 
 interface CalendarEvent {
@@ -729,6 +738,65 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
                         </div>
                         <div className="bg-gray-100 px-3 py-2 text-xs text-gray-500 border-t border-gray-200">
                           Total: {selectedEvent.attendees.length} peserta
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Daftar Undangan - Mini Table */}
+                  {selectedEvent.undangan && selectedEvent.undangan.length > 0 && (
+                    <div>
+                      <label className="font-medium text-gray-700 text-sm mb-3 block">Daftar Undangan:</label>
+                      <div className="bg-gray-50 rounded-lg border border-gray-200 overflow-hidden">
+                        <div className="max-h-32 overflow-y-auto">
+                          <table className="w-full text-sm">
+                            <thead className="bg-gray-100 sticky top-0">
+                              <tr>
+                                <th className="text-left py-2 px-3 text-gray-600 font-medium text-xs">No</th>
+                                <th className="text-left py-2 px-3 text-gray-600 font-medium text-xs">Nama</th>
+                                <th className="text-left py-2 px-3 text-gray-600 font-medium text-xs">Kategori</th>
+                                <th className="text-left py-2 px-3 text-gray-600 font-medium text-xs">NIP</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {selectedEvent.undangan.map((undangan, index) => (
+                                <tr 
+                                  key={undangan.id || index} 
+                                  className={`border-b border-gray-200 last:border-b-0 ${
+                                    index % 2 === 0 ? 'bg-white' : 'bg-gray-50'
+                                  }`}
+                                >
+                                  <td className="py-2 px-3 text-gray-500 text-xs font-mono">
+                                    {index + 1}
+                                  </td>
+                                  <td className="py-2 px-3 text-gray-800 font-medium">
+                                    {undangan.nama}
+                                  </td>
+                                  <td className="py-2 px-3">
+                                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                      undangan.kategori === 'internal' 
+                                        ? 'bg-blue-100 text-blue-800' 
+                                        : 'bg-green-100 text-green-800'
+                                    }`}>
+                                      {undangan.kategori === 'internal' ? 'Internal' : 'Eksternal'}
+                                    </span>
+                                  </td>
+                                  <td className="py-2 px-3 text-gray-600 text-xs font-mono">
+                                    {undangan.nip || '-'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <div className="bg-gray-100 px-3 py-2 text-xs text-gray-500 border-t border-gray-200">
+                          Total: {selectedEvent.undangan.length} undangan
+                          {selectedEvent.undangan.filter(u => u.kategori === 'internal').length > 0 && (
+                            <span className="ml-2">
+                              ({selectedEvent.undangan.filter(u => u.kategori === 'internal').length} Internal, 
+                              {selectedEvent.undangan.filter(u => u.kategori === 'eksternal').length} Eksternal)
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

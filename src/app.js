@@ -20,6 +20,7 @@ const app = express();
 // Environment variables with defaults
 const PORT = process.env.PORT || 3000;
 const NODE_ENV = process.env.NODE_ENV || 'development';
+const LOG_LEVEL = process.env.LOG_LEVEL || 'info'; // error, warn, info, debug
 const CORS_ORIGINS = process.env.CORS_ORIGINS || 'http://localhost:3000,http://localhost:3001';
 const RATE_LIMIT_WINDOW_MS = parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000; // 15 minutes
 const RATE_LIMIT_MAX = parseInt(process.env.RATE_LIMIT_MAX) || 100;
@@ -78,12 +79,40 @@ app.options('*', (req, res) => {
   res.sendStatus(200);
 });
 
-// Logging
-if (NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-} else {
-  app.use(morgan('combined'));
-}
+// Logging configuration based on LOG_LEVEL
+const setupLogging = () => {
+  switch (LOG_LEVEL.toLowerCase()) {
+    case 'error':
+      // Only log errors (4xx and 5xx status codes)
+      app.use(morgan('combined', {
+        skip: (req, res) => res.statusCode < 400
+      }));
+      break;
+    case 'warn':
+      // Log warnings and errors (3xx, 4xx, 5xx status codes)
+      app.use(morgan('combined', {
+        skip: (req, res) => res.statusCode < 300
+      }));
+      break;
+    case 'info':
+      // Log all requests with basic info
+      app.use(morgan('combined'));
+      break;
+    case 'debug':
+      // Log everything with detailed info (development mode)
+      app.use(morgan('dev'));
+      break;
+    default:
+      // Default to info level
+      app.use(morgan('combined'));
+  }
+  
+  // Log current configuration
+  console.log(`🔧 Logging Level: ${LOG_LEVEL.toUpperCase()}`);
+  console.log(`🌍 Environment: ${NODE_ENV.toUpperCase()}`);
+};
+
+setupLogging();
 
 // Body parsing middleware
 app.use(express.json({ limit: JSON_LIMIT }));

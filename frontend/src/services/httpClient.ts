@@ -273,6 +273,7 @@ export class HttpClient {
           }
         };
         
+        
         // Log error with context (skip logging for client errors that are handled by UI)
         if (response.status >= 500) {
           // Only log server errors (5xx) as they need attention

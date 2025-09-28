@@ -12,6 +12,7 @@ import toast from "react-hot-toast";
 import { apiService } from "@/services/apiService";
 import { API_ENDPOINTS } from "@/services/apiEndpoints";
 import { getErrorMessage, logError, isValidationError } from "@/utils/errorHandler";
+import MultipleUndanganSelector from "./MultipleUndanganSelector";
 
 interface AddAgendaFormProps {
   isOpen: boolean;
@@ -24,6 +25,15 @@ interface AddAgendaFormProps {
   } | null;
 }
 
+interface UndanganItem {
+  id?: number;
+  pegawai_id?: string; // Changed to string to match NIP
+  nama: string;
+  kategori: 'internal' | 'eksternal';
+  pegawai_nama?: string;
+  pegawai_jabatan?: string;
+}
+
 interface AgendaFormData {
   title: string;
   description: string;
@@ -32,9 +42,9 @@ interface AgendaFormData {
   end_time: string;
   location: string;
   priority: string;
-  attendees: string;
   nomor_surat: string;
   surat_undangan: string;
+  undangan: UndanganItem[];
 }
 
 export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddAgendaFormProps) {
@@ -46,9 +56,9 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
     end_time: "",
     location: "",
     priority: "medium",
-    attendees: "",
     nomor_surat: "",
-    surat_undangan: ""
+    surat_undangan: "",
+    undangan: []
   });
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Partial<AgendaFormData>>({});
@@ -97,6 +107,10 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
 
     if (!formData.surat_undangan.trim()) {
       newErrors.surat_undangan = "Surat undangan harus diisi";
+    }
+
+    if (!formData.undangan || formData.undangan.length === 0) {
+      (newErrors as any).undangan = "Minimal harus ada 1 undangan";
     }
 
     // Validate time logic
@@ -192,11 +206,6 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
         throw new Error("Token tidak ditemukan");
       }
 
-      // Parse attendees string into array
-      const attendeesArray = formData.attendees
-        .split(',')
-        .map(attendee => attendee.trim())
-        .filter(attendee => attendee.length > 0);
 
       // Convert time format from HH:MM:SS to HH:MM if needed
       const formatTime = (time: string) => {
@@ -215,9 +224,9 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
         end_time: formatTime(formData.end_time),
         location: formData.location.trim(),
         priority: formData.priority,
-        attendees: attendeesArray,
         nomor_surat: formData.nomor_surat.trim(),
         surat_undangan: formData.surat_undangan.trim(),
+        undangan: formData.undangan,
         // REMARK: Status default untuk backward compatibility dengan backend
         // Status acara akan dihitung dinamis di frontend berdasarkan waktu agenda
         // Default ini hanya untuk memastikan backend tidak error dan database schema tetap konsisten
@@ -244,9 +253,9 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
         end_time: "",
         location: "",
         priority: "medium",
-        attendees: "",
         nomor_surat: "",
-        surat_undangan: ""
+        surat_undangan: "",
+        undangan: []
       });
       setErrors({});
 
@@ -282,9 +291,9 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
         end_time: "",
         location: "",
         priority: "medium",
-        attendees: "",
         nomor_surat: "",
-        surat_undangan: ""
+        surat_undangan: "",
+        undangan: []
       });
       setErrors({});
       onClose();
@@ -511,32 +520,29 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
             </CardContent>
           </Card>
 
-          {/* Attendees */}
+          {/* Undangan */}
           <Card>
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                Peserta
+                Undangan
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div>
-                <Label htmlFor="attendees" className="text-sm font-medium">
-                  Daftar Peserta
-                </Label>
-                <Input
-                  id="attendees"
-                  type="text"
-                  placeholder="Masukkan nama peserta (pisahkan dengan koma)"
-                  value={formData.attendees}
-                  onChange={(e) => handleInputChange("attendees", e.target.value)}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Pisahkan nama peserta dengan koma, contoh: John Doe, Jane Smith
+              <MultipleUndanganSelector
+                value={formData.undangan}
+                onChange={(undangan) => setFormData(prev => ({ ...prev, undangan }))}
+                disabled={isLoading}
+              />
+              {(errors as any).undangan && (
+                <p className="text-sm text-red-500 mt-2 flex items-center gap-1">
+                  <AlertCircle className="h-3 w-3" />
+                  {(errors as any).undangan}
                 </p>
-              </div>
+              )}
             </CardContent>
           </Card>
+
 
           {/* Form Actions */}
           <div className="flex justify-end gap-3 pt-4 border-t">
