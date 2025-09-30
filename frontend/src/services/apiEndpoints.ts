@@ -50,6 +50,9 @@ export const API_ENDPOINTS = {
     GET_BY_DATE: (date: string) => `/agenda/date/${date}`,
     GET_BY_DATE_RANGE: (startDate: string, endDate: string) => 
       `/agenda/date-range?start=${startDate}&end=${endDate}`,
+    UPLOAD_FILE: (id: number) => `/agenda/${id}/upload`,
+    DELETE_FILE: (id: number) => `/agenda/${id}/file`,
+    DOWNLOAD_FILE: (id: number) => `/agenda/${id}/download`,
   },
 
   // File upload endpoints

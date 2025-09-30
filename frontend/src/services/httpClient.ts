@@ -181,14 +181,25 @@ export class HttpClient {
     // Create abort controller for timeout
     const controller = this.createAbortController(requestTimeout);
     
+    // For FormData, don't include Content-Type header (browser will set it with boundary)
+    const isFormData = options.body instanceof FormData;
+    const headers = isFormData
+      ? {
+          // Skip Content-Type for FormData
+          'Accept': 'application/json',
+          ...modifiedConfig.headers,
+          ...options.headers,
+        }
+      : {
+          ...this.defaultHeaders,
+          ...modifiedConfig.headers,
+          ...options.headers,
+        };
+    
     const requestOptions: RequestInit = {
       ...options,
       signal: config.signal || controller.signal,
-      headers: {
-        ...this.defaultHeaders,
-        ...modifiedConfig.headers,
-        ...options.headers,
-      },
+      headers,
     };
 
     try {
@@ -242,7 +253,12 @@ export class HttpClient {
 
     // Add body for non-GET requests
     if (data && method !== 'GET') {
-      requestOptions.body = JSON.stringify(data);
+      // Check if data is FormData - don't stringify it
+      if (data instanceof FormData) {
+        requestOptions.body = data;
+      } else {
+        requestOptions.body = JSON.stringify(data);
+      }
     }
 
     try {

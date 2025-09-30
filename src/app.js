@@ -7,6 +7,7 @@ require('dotenv').config();
 
 const { errorHandler } = require('./middleware/errorHandler');
 const { notFound } = require('./middleware/notFound');
+const { initializeMinio } = require('./config/minio');
 
 // Import routes
 const authRoutes = require('./routes/authRoutes');
@@ -149,6 +150,16 @@ app.use('/api/pegawai', pegawaiRoutes);
 // Error handling middleware
 app.use(notFound);
 app.use(errorHandler);
+
+// Initialize MinIO
+initializeMinio()
+  .then(() => {
+    console.log('✅ MinIO initialized successfully');
+  })
+  .catch((error) => {
+    console.error('❌ MinIO initialization failed:', error.message);
+    console.log('⚠️  Server will continue without MinIO file storage');
+  });
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Server is running on port ${PORT}`);

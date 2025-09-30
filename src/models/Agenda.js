@@ -16,6 +16,12 @@ class Agenda {
     this.attendance_status = data.attendance_status;
     this.nomor_surat = data.nomor_surat;
     this.surat_undangan = data.surat_undangan;
+    this.file_name = data.file_name;
+    this.file_path = data.file_path;
+    this.file_size = data.file_size;
+    this.file_type = data.file_type;
+    this.file_uploaded_at = data.file_uploaded_at;
+    this.file_bucket = data.file_bucket;
     this.created_by = data.created_by;
     this.updated_by = data.updated_by;
     this.created_at = data.created_at;
@@ -230,7 +236,8 @@ class Agenda {
     const allowedFields = [
       'title', 'description', 'date', 'start_time', 'end_time',
       'location', 'status', 'priority', 'category', 'notes', 'attendance_status',
-      'nomor_surat', 'surat_undangan'
+      'nomor_surat', 'surat_undangan',
+      'file_name', 'file_path', 'file_size', 'file_type', 'file_uploaded_at', 'file_bucket'
     ];
     
     const updates = [];
@@ -339,6 +346,12 @@ class Agenda {
       attendance_status: this.attendance_status,
       nomor_surat: this.nomor_surat,
       surat_undangan: this.surat_undangan,
+      file_name: this.file_name,
+      file_path: this.file_path,
+      file_size: this.file_size,
+      file_type: this.file_type,
+      file_uploaded_at: this.file_uploaded_at,
+      file_bucket: this.file_bucket,
       created_by: this.created_by,
       updated_by: this.updated_by,
       created_at: this.created_at,

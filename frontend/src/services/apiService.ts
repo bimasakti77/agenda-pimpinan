@@ -192,11 +192,8 @@ class ApiService {
     formData.append('file', file);
 
     try {
-      const response = await httpClient.post<T>(endpoint, formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      // Don't set Content-Type manually - browser will set it with boundary
+      const response = await httpClient.post<T>(endpoint, formData);
       return response.data as T;
     } catch (error: any) {
       throw new Error(error.message || 'Failed to upload file');

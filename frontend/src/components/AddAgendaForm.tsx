@@ -13,6 +13,7 @@ import { apiService } from "@/services/apiService";
 import { API_ENDPOINTS } from "@/services/apiEndpoints";
 import { getErrorMessage, logError, isValidationError } from "@/utils/errorHandler";
 import MultipleUndanganSelector from "./MultipleUndanganSelector";
+import { UndanganItem, AgendaFormData } from "@/types/agenda";
 
 interface AddAgendaFormProps {
   isOpen: boolean;
@@ -25,27 +26,7 @@ interface AddAgendaFormProps {
   } | null;
 }
 
-interface UndanganItem {
-  id?: number;
-  pegawai_id?: string; // Changed to string to match NIP
-  nama: string;
-  kategori: 'internal' | 'eksternal';
-  pegawai_nama?: string;
-  pegawai_jabatan?: string;
-}
-
-interface AgendaFormData {
-  title: string;
-  description: string;
-  date: string;
-  start_time: string;
-  end_time: string;
-  location: string;
-  priority: string;
-  nomor_surat: string;
-  surat_undangan: string;
-  undangan: UndanganItem[];
-}
+// Types are now imported from @/types/agenda
 
 export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddAgendaFormProps) {
   const [formData, setFormData] = useState<AgendaFormData>({
@@ -58,6 +39,7 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
     priority: "medium",
     nomor_surat: "",
     surat_undangan: "",
+    file_undangan: null,
     undangan: []
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -76,6 +58,31 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
         [field]: undefined
       }));
     }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    
+    if (file) {
+      // Validate file type
+      const allowedTypes = [
+        'application/pdf',
+      ];
+      
+      if (!allowedTypes.includes(file.type)) {
+        toast.error('Format file tidak didukung. Gunakan PDF');
+        return;
+      }
+      
+      // Validate file size (10MB)
+      const maxSize = 2 * 1024 * 1024; // 2MB in bytes
+      if (file.size > maxSize) {
+        toast.error('Ukuran file terlalu besar. Maksimal 2MB.');
+        return;
+      }
+    }
+    
+    setFormData(prev => ({ ...prev, file_undangan: file }));
   };
 
   const validateForm = (): boolean => {
@@ -206,7 +213,6 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
         throw new Error("Token tidak ditemukan");
       }
 
-
       // Convert time format from HH:MM:SS to HH:MM if needed
       const formatTime = (time: string) => {
         if (time.includes(':')) {
@@ -219,7 +225,7 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
       const agendaData = {
         title: formData.title.trim(),
         description: formData.description.trim(),
-        date: formData.date, // Send as string to avoid timezone issues
+        date: formData.date,
         start_time: formatTime(formData.start_time),
         end_time: formatTime(formData.end_time),
         location: formData.location.trim(),
@@ -227,22 +233,39 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
         nomor_surat: formData.nomor_surat.trim(),
         surat_undangan: formData.surat_undangan.trim(),
         undangan: formData.undangan,
-        // REMARK: Status default untuk backward compatibility dengan backend
-        // Status acara akan dihitung dinamis di frontend berdasarkan waktu agenda
-        // Default ini hanya untuk memastikan backend tidak error dan database schema tetap konsisten
-        // Status yang ditampilkan di UI tetap menggunakan perhitungan real-time
-        status: "scheduled" // Default untuk compatibility, akan di-override di frontend
+        status: "scheduled"
       };
 
-      const result = await apiService.post(API_ENDPOINTS.AGENDA.CREATE, agendaData);
+      // ✅ SINGLE REQUEST: Create agenda with file in one go
+      const formDataToSend = new FormData();
       
-      toast.success("Agenda berhasil ditambahkan!", {
-        duration: 3000,
-        style: {
-          background: '#10B981',
-          color: '#fff',
-        },
-      });
+      // Add JSON data as 'data' field
+      formDataToSend.append('data', JSON.stringify(agendaData));
+      
+      // Add file if exists
+      if (formData.file_undangan) {
+        formDataToSend.append('file', formData.file_undangan);
+      }
+
+      // ⚠️ IMPORTANT: Don't set Content-Type manually for FormData!
+      // Browser will auto-set it with the correct boundary
+      const result = await apiService.post(
+        API_ENDPOINTS.AGENDA.CREATE, 
+        formDataToSend
+      );
+      
+      toast.success(
+        formData.file_undangan 
+          ? "Agenda dan file berhasil ditambahkan!" 
+          : "Agenda berhasil ditambahkan!",
+        {
+          duration: 3000,
+          style: {
+            background: '#10B981',
+            color: '#fff',
+          },
+        }
+      );
 
       // Reset form
       setFormData({
@@ -255,6 +278,7 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
         priority: "medium",
         nomor_surat: "",
         surat_undangan: "",
+        file_undangan: null,
         undangan: []
       });
       setErrors({});
@@ -293,6 +317,7 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
         priority: "medium",
         nomor_surat: "",
         surat_undangan: "",
+        file_undangan: null,
         undangan: []
       });
       setErrors({});
@@ -398,6 +423,62 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
                     {errors.surat_undangan}
                   </p>
                 )}
+              </div>
+
+              {/* File Upload Section */}
+              <div>
+                <Label htmlFor="file_undangan" className="text-sm font-medium">
+                  Upload File Surat Undangan
+                </Label>
+                <div className="mt-2">
+                  <div className="flex items-center justify-center w-full">
+                    <label
+                      htmlFor="file_undangan"
+                      className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors duration-200"
+                    >
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <FileText className="w-8 h-8 mb-2 text-gray-400" />
+                        <p className="mb-2 text-sm text-gray-500">
+                          <span className="font-semibold">Klik untuk upload</span> atau drag & drop
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          PDF (Max. 10MB)
+                        </p>
+                      </div>
+                      <input
+                        id="file_undangan"
+                        type="file"
+                        className="hidden"
+                        accept=".pdf"
+                        onChange={handleFileChange}
+                      />
+                    </label>
+                  </div>
+                  
+                  {/* File Preview */}
+                  {formData.file_undangan && (
+                    <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <FileText className="h-4 w-4 text-blue-600" />
+                          <span className="text-sm font-medium text-blue-900">
+                            {formData.file_undangan.name}
+                          </span>
+                          <span className="text-xs text-blue-600">
+                            ({(formData.file_undangan.size / 1024 / 1024).toFixed(2)} MB)
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, file_undangan: null }))}
+                          className="text-red-500 hover:text-red-700 text-sm"
+                        >
+                          Hapus
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>

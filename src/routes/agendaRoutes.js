@@ -3,6 +3,7 @@ const router = express.Router();
 const agendaService = require('../services/agendaService');
 const { authenticate, authorize, canAccessResource } = require('../middleware/auth');
 const { validate, schemas } = require('../middleware/validation');
+const { uploadSingle, handleUploadError } = require('../middleware/upload');
 
 // @route   GET /api/agenda/stats/monthly
 // @desc    Get monthly agenda statistics
@@ -202,15 +203,43 @@ router.get('/:id', authenticate, async (req, res, next) => {
 });
 
 // @route   POST /api/agenda
-// @desc    Create new agenda
+// @desc    Create new agenda (with optional file upload)
 // @access  Private
-router.post('/', authenticate, validate(schemas.createAgenda), async (req, res, next) => {
+router.post('/', authenticate, uploadSingle, async (req, res, next) => {
   try {
-    const agenda = await agendaService.createAgenda(req.body, req.user.id);
+    // Parse JSON data from form field
+    let agendaData;
+    try {
+      agendaData = req.body.data ? JSON.parse(req.body.data) : req.body;
+    } catch (parseError) {
+      agendaData = req.body;
+    }
+
+    // Create agenda
+    const agenda = await agendaService.createAgenda(agendaData, req.user.id);
+    
+    // Upload file if provided
+    if (req.file) {
+      try {
+        await agendaService.uploadAgendaFile(
+          agenda.id,
+          req.file.buffer,
+          req.file.originalname,
+          req.file.mimetype
+        );
+      } catch (fileError) {
+        console.error('File upload error during agenda creation:', fileError);
+        // Continue even if file upload fails
+      }
+    }
+
+    // Fetch updated agenda with file info
+    const updatedAgenda = await agendaService.getAgendaById(agenda.id);
+
     res.status(201).json({
       success: true,
-      message: 'Agenda created successfully',
-      data: agenda.toJSON()
+      message: req.file ? 'Agenda dan file berhasil dibuat' : 'Agenda created successfully',
+      data: updatedAgenda.toJSON()
     });
   } catch (error) {
     next(error);
@@ -298,6 +327,101 @@ router.get('/priority/:priority', authenticate, async (req, res, next) => {
     res.json({
       success: true,
       data: agenda
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// @route   POST /api/agenda/:id/upload
+// @desc    Upload file for agenda
+// @access  Private
+router.post('/:id/upload', authenticate, uploadSingle, handleUploadError, async (req, res, next) => {
+  try {
+    const agendaId = req.params.id;
+    
+    // Check if user can access this agenda
+    const agenda = await agendaService.getAgendaById(agendaId);
+    if (!['admin', 'superadmin'].includes(req.user.role) && agenda.created_by !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. You can only upload files to your own agenda.'
+      });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded'
+      });
+    }
+
+    const result = await agendaService.uploadAgendaFile(
+      agendaId,
+      req.file.buffer,
+      req.file.originalname,
+      req.file.mimetype
+    );
+
+    res.json({
+      success: true,
+      message: result.message,
+      data: result.fileInfo
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// @route   DELETE /api/agenda/:id/file
+// @desc    Delete file from agenda
+// @access  Private
+router.delete('/:id/file', authenticate, async (req, res, next) => {
+  try {
+    const agendaId = req.params.id;
+    
+    // Check if user can access this agenda
+    const agenda = await agendaService.getAgendaById(agendaId);
+    if (!['admin', 'superadmin'].includes(req.user.role) && agenda.created_by !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. You can only delete files from your own agenda.'
+      });
+    }
+
+    const result = await agendaService.deleteAgendaFile(agendaId);
+
+    res.json({
+      success: true,
+      message: result.message
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// @route   GET /api/agenda/:id/download
+// @desc    Get file download URL
+// @access  Private
+router.get('/:id/download', authenticate, async (req, res, next) => {
+  try {
+    const agendaId = req.params.id;
+    const { expiry = 3600 } = req.query; // Default 1 hour
+    
+    // Check if user can access this agenda
+    const agenda = await agendaService.getAgendaById(agendaId);
+    if (!['admin', 'superadmin'].includes(req.user.role) && agenda.created_by !== req.user.id) {
+      return res.status(403).json({
+        success: false,
+        message: 'Access denied. You can only download files from your own agenda.'
+      });
+    }
+
+    const result = await agendaService.getFileDownloadUrl(agendaId, parseInt(expiry));
+
+    res.json({
+      success: true,
+      data: result
     });
   } catch (error) {
     next(error);

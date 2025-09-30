@@ -1,4 +1,5 @@
 const Agenda = require('../models/Agenda');
+const FileService = require('./fileService');
 
 class AgendaService {
   // Create new agenda
@@ -33,6 +34,15 @@ class AgendaService {
       throw new Error('Agenda not found');
     }
 
+    // If updating file, delete old file first
+    if (updateData.file_path && agenda.file_path && updateData.file_path !== agenda.file_path) {
+      try {
+        await FileService.deleteFile(agenda.file_path);
+      } catch (error) {
+        console.warn('Failed to delete old file:', error.message);
+      }
+    }
+
     await agenda.update(updateData, userId);
     return agenda;
   }
@@ -42,6 +52,15 @@ class AgendaService {
     const agenda = await Agenda.findById(id);
     if (!agenda) {
       throw new Error('Agenda not found');
+    }
+
+    // Delete associated file from MinIO
+    if (agenda.file_path) {
+      try {
+        await FileService.deleteFile(agenda.file_path);
+      } catch (error) {
+        console.warn('Failed to delete file:', error.message);
+      }
     }
 
     await agenda.delete();
@@ -179,6 +198,102 @@ class AgendaService {
   async getDashboardStats(user) {
     const result = await Agenda.getDashboardStats(user);
     return result;
+  }
+
+  // Upload file for agenda
+  async uploadAgendaFile(agendaId, fileBuffer, originalName, mimeType) {
+    const agenda = await Agenda.findById(agendaId);
+    if (!agenda) {
+      throw new Error('Agenda not found');
+    }
+
+    // Delete existing file if any
+    if (agenda.file_path) {
+      try {
+        await FileService.deleteFile(agenda.file_path);
+      } catch (error) {
+        console.warn('Failed to delete existing file:', error.message);
+      }
+    }
+
+    // Upload new file
+    const uploadResult = await FileService.uploadFile(fileBuffer, originalName, mimeType, agendaId);
+    
+    if (uploadResult.success) {
+      // Update agenda with file information
+      const fileInfo = uploadResult.fileInfo;
+      await agenda.update({
+        file_name: fileInfo.fileName,
+        file_path: fileInfo.filePath,
+        file_size: fileInfo.fileSize,
+        file_type: fileInfo.fileType,
+        file_uploaded_at: fileInfo.uploadedAt,
+        file_bucket: fileInfo.bucketName
+      });
+
+      return {
+        success: true,
+        message: 'File uploaded successfully',
+        fileInfo: fileInfo
+      };
+    }
+
+    throw new Error('Failed to upload file');
+  }
+
+  // Delete file from agenda
+  async deleteAgendaFile(agendaId) {
+    const agenda = await Agenda.findById(agendaId);
+    if (!agenda) {
+      throw new Error('Agenda not found');
+    }
+
+    if (!agenda.file_path) {
+      throw new Error('No file attached to this agenda');
+    }
+
+    // Delete file from MinIO
+    await FileService.deleteFile(agenda.file_path);
+
+    // Update agenda to remove file information
+    await agenda.update({
+      file_name: null,
+      file_path: null,
+      file_size: null,
+      file_type: null,
+      file_uploaded_at: null,
+      file_bucket: null
+    });
+
+    return {
+      success: true,
+      message: 'File deleted successfully'
+    };
+  }
+
+  // Get file download URL
+  async getFileDownloadUrl(agendaId, expiry = 3600) {
+    const agenda = await Agenda.findById(agendaId);
+    if (!agenda) {
+      throw new Error('Agenda not found');
+    }
+
+    if (!agenda.file_path) {
+      throw new Error('No file attached to this agenda');
+    }
+
+    // Use bucket from database, fallback to default
+    const bucketName = agenda.file_bucket || process.env.MINIO_BUCKET_NAME || 'agenda-files';
+    const downloadUrl = await FileService.getPresignedUrl(agenda.file_path, bucketName, expiry);
+    
+    return {
+      success: true,
+      downloadUrl: downloadUrl,
+      fileName: agenda.file_name,
+      fileSize: agenda.file_size,
+      fileType: agenda.file_type,
+      bucketName: bucketName
+    };
   }
 }
 

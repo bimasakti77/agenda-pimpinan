@@ -8,7 +8,7 @@ import "../app/calendar.css";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, UserCheck, Trash2, Edit } from "lucide-react";
+import { Plus, UserCheck, Trash2, Edit, FileText, Download, Eye } from "lucide-react";
 import UpdateAgendaStatus from "./UpdateAgendaStatus";
 import EditAgendaForm from "./EditAgendaForm";
 import toast from "react-hot-toast";
@@ -43,6 +43,12 @@ interface Agenda {
   nomor_surat: string;
   surat_undangan: string;
   undangan: UndanganItem[];
+  file_name?: string;
+  file_path?: string;
+  file_size?: number;
+  file_type?: string;
+  file_bucket?: string;
+  file_uploaded_at?: string;
 }
 
 interface CalendarEvent {
@@ -75,6 +81,7 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
   const [isEditAgendaOpen, setIsEditAgendaOpen] = useState(false);
   const [currentView, setCurrentView] = useState(Views.MONTH);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [isFileLoading, setIsFileLoading] = useState(false);
 
 
   // Convert agendas to calendar events
@@ -231,6 +238,95 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
     
     if (onAgendaUpdate) {
       onAgendaUpdate();
+    }
+  };
+
+  // Handle file download
+  const handleDownloadFile = async () => {
+    if (!selectedEvent?.file_path) {
+      toast.error("Tidak ada file surat undangan");
+      return;
+    }
+
+    console.log("🔍 Debug - Download - Selected Event:", {
+      id: selectedEvent.id,
+      file_name: selectedEvent.file_name,
+      file_path: selectedEvent.file_path,
+      file_bucket: selectedEvent.file_bucket
+    });
+
+    setIsFileLoading(true);
+    try {
+      console.log("🔍 Debug - Download - Requesting download URL for agenda ID:", selectedEvent.id);
+      const response = await apiService.get(API_ENDPOINTS.AGENDA.DOWNLOAD_FILE(selectedEvent.id));
+      
+      console.log("🔍 Debug - Download - Download response:", response);
+      
+      if (response.success && response.downloadUrl) {
+        console.log("🔍 Debug - Download - Download URL:", response.downloadUrl);
+        // Create download link
+        const link = document.createElement('a');
+        link.href = response.downloadUrl;
+        link.download = response.fileName || selectedEvent.file_name || 'surat_undangan.pdf';
+        link.target = '_blank';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        toast.success("File berhasil didownload");
+      } else {
+        console.error("🔍 Debug - Download - Invalid response:", response);
+        toast.error("Gagal mendapatkan link download");
+      }
+    } catch (error: any) {
+      console.error("🔍 Debug - Download - Error downloading file:", error);
+      console.error("🔍 Debug - Download - Error details:", {
+        message: error.message,
+        status: error.status,
+        response: error.response
+      });
+      toast.error(error.message || "Gagal download file");
+    } finally {
+      setIsFileLoading(false);
+    }
+  };
+
+  // Handle view file (open in new tab)
+  const handleViewFile = async () => {
+    if (!selectedEvent?.file_path) {
+      toast.error("Tidak ada file surat undangan");
+      return;
+    }
+
+    console.log("🔍 Debug - Selected Event:", {
+      id: selectedEvent.id,
+      file_name: selectedEvent.file_name,
+      file_path: selectedEvent.file_path,
+      file_bucket: selectedEvent.file_bucket
+    });
+
+    setIsFileLoading(true);
+    try {
+
+     const response = await apiService.get(API_ENDPOINTS.AGENDA.DOWNLOAD_FILE(selectedEvent.id));
+      
+     if (response.success && response.downloadUrl) {
+       
+        window.open(response.downloadUrl, '_blank');
+        toast.success("File dibuka di tab baru");
+      } else {
+        toast.error("Gagal membuka file - Response tidak valid");
+      }
+    } catch (error: any) {
+      console.error("🔍 Debug - Error viewing file:", error);
+      console.error("🔍 Debug - Error details:", {
+        message: error.message,
+        status: error.status,
+        response: error.response
+      });
+      toast.error(error.message || "Gagal membuka file");
+    } finally {
+      setIsFileLoading(false);
     }
   };
 
@@ -684,6 +780,61 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
                           </p>
                         </div>
                       </div>
+                      
+                      {/* File Surat Undangan */}
+                      {selectedEvent.file_name && selectedEvent.file_path ? (
+                        <div>
+                          <label className="font-medium text-gray-700 text-sm">File Surat Undangan</label>
+                          <div className="bg-white border rounded-lg p-3">
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <FileText className="h-5 w-5 text-blue-600" />
+                                <div>
+                                  <p className="text-gray-800 text-sm font-medium">
+                                    {selectedEvent.file_name}
+                                  </p>
+                                  <p className="text-gray-500 text-xs">
+                                    {selectedEvent.file_size ? `${(selectedEvent.file_size / 1024 / 1024).toFixed(2)} MB` : ''}
+                                    {selectedEvent.file_type && ` • ${selectedEvent.file_type}`}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={handleViewFile}
+                                  disabled={isFileLoading}
+                                  className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                >
+                                  <Eye className="h-4 w-4" />
+                                  {isFileLoading ? 'Loading...' : 'Lihat'}
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={handleDownloadFile}
+                                  disabled={isFileLoading}
+                                  className="flex items-center gap-1 text-green-600 hover:text-green-800 hover:bg-green-50"
+                                >
+                                  <Download className="h-4 w-4" />
+                                  {isFileLoading ? 'Loading...' : 'Download'}
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="font-medium text-gray-700 text-sm">File Surat Undangan</label>
+                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                            <p className="text-gray-500 text-sm flex items-center gap-2">
+                              <FileText className="h-4 w-4" />
+                              Tidak ada file surat undangan
+                            </p>
+                          </div>
+                        </div>
+                      )}
                       {/* Deskripsi */}
                       {selectedEvent.description && (
                         <div>
