@@ -109,9 +109,10 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
       newErrors.surat_undangan = "Surat undangan harus diisi";
     }
 
-    if (!formData.undangan || formData.undangan.length === 0) {
-      (newErrors as any).undangan = "Minimal harus ada 1 undangan";
-    }
+    // Undangan tidak lagi wajib saat membuat agenda
+    // if (!formData.undangan || formData.undangan.length === 0) {
+    //   (newErrors as any).undangan = "Minimal harus ada 1 undangan";
+    // }
 
     // Validate time logic
     if (formData.start_time && formData.end_time) {
@@ -525,8 +526,11 @@ export default function AddAgendaForm({ isOpen, onClose, onSuccess, user }: AddA
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                Undangan
+                Input List Undangan
               </CardTitle>
+              <p className="text-sm text-gray-600">
+                Undangan dapat dikirim setelah agenda dibuat melalui tombol "Kirim Undangan"
+              </p>
             </CardHeader>
             <CardContent>
               <MultipleUndanganSelector

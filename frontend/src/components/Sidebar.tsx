@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Calendar, BarChart3, Users, LogOut, Menu, X } from "lucide-react";
+import { Calendar, BarChart3, Users, LogOut, Menu, X, Mail, FileText } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
 interface SidebarProps {
@@ -26,6 +26,13 @@ export default function Sidebar({ user, onLogout, currentView, onViewChange }: S
       label: "Dashboard",
       icon: BarChart3,
       description: "Overview & Statistics",
+      roles: ["user", "admin", "superadmin"]
+    },
+    {
+      id: "my-agenda",
+      label: "Agenda dan Undangan",
+      icon: FileText,
+      description: "Agenda dan Undangan",
       roles: ["user", "admin", "superadmin"]
     },
     {

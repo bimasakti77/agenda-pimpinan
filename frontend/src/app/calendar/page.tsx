@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getStoredUser, getStoredToken, type User } from "@/lib/auth";
-import { useTokenManager } from "@/hooks/useTokenManager";
+import { type User } from "@/lib/auth";
+import { useAuth } from "@/contexts/AuthContext";
+import { ProtectedPage } from "@/components/ProtectedPage";
 import CalendarView from "@/components/CalendarView";
 import UserFilter from "@/components/UserFilter";
 import Sidebar from "@/components/Sidebar";
@@ -44,31 +45,10 @@ export default function CalendarPage() {
   const [currentView, setCurrentView] = useState("calendar");
   const [isAddAgendaOpen, setIsAddAgendaOpen] = useState(false);
 
-  const { isAuthenticated, isLoading: tokenLoading } = useTokenManager();
+  const { user, logout } = useAuth();
 
-  useEffect(() => {
-    const token = getStoredToken();
-    const user = getStoredUser();
-
-    if (!token || !user) {
-      window.location.href = "/login";
-      return;
-    }
-
-    setUser(user);
-
-    if (user.role !== 'superadmin') {
-      loadAgendas();
-      setHasSelectedUser(true);
-      setShowUserFilter(false);
-    } else {
-      setIsLoading(false);
-      setShowUserFilter(true);
-      setHasSelectedUser(false);
-    }
-  }, []);
-
-  const loadAgendas = async (userId: number | null = null) => {
+  // Define all functions first
+  const loadAgendas = useCallback(async (userId: number | null = null) => {
     setIsLoading(true);
     setError("");
     try {
@@ -108,7 +88,24 @@ export default function CalendarPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  // Initial load - hanya sekali saat user login
+  useEffect(() => {
+    if (user) {
+      setUser(user);
+
+      if (user.role !== 'superadmin') {
+        loadAgendas();
+        setHasSelectedUser(true);
+        setShowUserFilter(false);
+      } else {
+        setIsLoading(false);
+        setShowUserFilter(true);
+        setHasSelectedUser(false);
+      }
+    }
+  }, [user]);
 
   const handleUserSelect = async (userId: number | null, userName: string) => {
     setIsTransitioning(true);
@@ -126,10 +123,7 @@ export default function CalendarPage() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem("accessToken");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
-    window.location.href = "/login";
+    logout();
   };
 
   const handleViewChange = (view: string) => {
@@ -139,6 +133,10 @@ export default function CalendarPage() {
       window.location.href = "/dashboard";
     } else if (view === "calendar") {
       // Already on calendar page, do nothing
+    } else if (view === "invitations") {
+      window.location.href = "/invitations";
+    } else if (view === "my-agenda") {
+      window.location.href = "/my-agenda";
     } else if (view === "users") {
       window.location.href = "/users";
     }
@@ -157,22 +155,8 @@ export default function CalendarPage() {
     }
   };
 
-  if (tokenLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Memuat aplikasi...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated || !user) {
-    return null;
-  }
-
   return (
+    <ProtectedPage title="Kalender Agenda">
     <div className="min-h-screen bg-gray-50">
       <div className="flex">
         <Sidebar
@@ -282,5 +266,6 @@ export default function CalendarPage() {
         user={user}
       />
     </div>
+    </ProtectedPage>
   );
 }

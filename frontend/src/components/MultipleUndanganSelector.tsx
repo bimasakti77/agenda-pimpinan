@@ -14,10 +14,10 @@ import toast from 'react-hot-toast';
 
 interface UndanganItem {
   id?: number;
-  pegawai_id?: string; // NIP from simpeg_Pegawai table
+  pegawai_id?: string | null; // NIP from simpeg_Pegawai table, null for external
   nama: string;
   kategori: 'internal' | 'eksternal';
-  nip?: string; // NIP from simpeg_Pegawai (same as pegawai_id for internal)
+  nip?: string | null; // NIP from simpeg_Pegawai (same as pegawai_id for internal)
   pegawai_nama?: string;
   pegawai_jabatan?: string;
 }
@@ -156,7 +156,7 @@ const MultipleUndanganSelector: React.FC<MultipleUndanganSelectorProps> = ({
       const newUndangan: UndanganItem = {
         nama: externalNama.trim(),
         kategori: 'eksternal',
-        pegawai_id: null // Explicitly set to null for external
+        pegawai_id: null // Set to null for external (backend expects string or null)
       };
 
       onChange([...value, newUndangan]);
@@ -251,6 +251,7 @@ const MultipleUndanganSelector: React.FC<MultipleUndanganSelectorProps> = ({
                       {undangan.kategori === 'internal' ? 'Internal' : 'Eksternal'}
                     </Badge>
                     <Button
+                      type="button"
                       variant="ghost"
                       size="sm"
                       onClick={() => removeUndangan(index)}

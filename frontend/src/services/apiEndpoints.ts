@@ -50,6 +50,8 @@ export const API_ENDPOINTS = {
     GET_BY_DATE: (date: string) => `/agenda/date/${date}`,
     GET_BY_DATE_RANGE: (startDate: string, endDate: string) => 
       `/agenda/date-range?start=${startDate}&end=${endDate}`,
+    MY_AGENDAS: '/agenda/my-agendas',
+    SEND_INVITATIONS: (id: number) => `/agenda/${id}/send-invitations`,
   },
 
   // File upload endpoints
@@ -71,6 +73,13 @@ export const API_ENDPOINTS = {
     STATS: '/dashboard/stats',
     RECENT_AGENDA: '/dashboard/recent-agenda',
     UPCOMING_AGENDA: '/dashboard/upcoming-agenda',
+  },
+
+  // Undangan endpoints
+  UNDANGAN: {
+    MY_INVITATIONS: '/undangan/my-invitations',
+    UPDATE_STATUS: (id: number) => `/undangan/${id}/status`,
+    DELEGATE: (id: number) => `/undangan/${id}/delegate`,
   },
 } as const;
 

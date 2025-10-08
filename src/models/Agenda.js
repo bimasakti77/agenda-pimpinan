@@ -16,6 +16,7 @@ class Agenda {
     this.attendance_status = data.attendance_status;
     this.nomor_surat = data.nomor_surat;
     this.surat_undangan = data.surat_undangan;
+    this.kirim_undangan = data.kirim_undangan || 0; // Default to 0 if not set
     this.created_by = data.created_by;
     this.updated_by = data.updated_by;
     this.created_at = data.created_at;
@@ -230,14 +231,17 @@ class Agenda {
     const allowedFields = [
       'title', 'description', 'date', 'start_time', 'end_time',
       'location', 'status', 'priority', 'category', 'notes', 'attendance_status',
-      'nomor_surat', 'surat_undangan'
+      'nomor_surat', 'surat_undangan', 'kirim_undangan'
     ];
+    
+    // Handle undangan separately
+    const { undangan, ...otherData } = updateData;
     
     const updates = [];
     const values = [];
     let paramCount = 1;
     
-    for (const [key, value] of Object.entries(updateData)) {
+    for (const [key, value] of Object.entries(otherData)) {
       if (allowedFields.includes(key) && value !== undefined) {
         updates.push(`${key} = $${paramCount}`);
         values.push(value);
@@ -245,19 +249,28 @@ class Agenda {
       }
     }
     
-    if (updates.length === 0) {
+    if (updates.length === 0 && !undangan) {
       throw new Error('No valid fields to update');
     }
     
-    updates.push(`updated_by = $${paramCount}`);
-    updates.push(`updated_at = NOW()`);
-    values.push(updated_by, this.id);
+    // Update agenda fields if there are any
+    if (updates.length > 0) {
+      updates.push(`updated_by = $${paramCount}`);
+      updates.push(`updated_at = NOW()`);
+      values.push(updated_by, this.id);
+      
+      const query = `UPDATE agenda SET ${updates.join(', ')} WHERE id = $${paramCount + 1} RETURNING *`;
+      const result = await pool.query(query, values);
+      
+      // Update current instance
+      Object.assign(this, result.rows[0]);
+    }
     
-    const query = `UPDATE agenda SET ${updates.join(', ')} WHERE id = $${paramCount + 1} RETURNING *`;
-    const result = await pool.query(query, values);
+    // Update undangan if provided
+    if (undangan !== undefined) {
+      await Agenda.updateUndangan(this.id, undangan);
+    }
     
-    // Update current instance
-    Object.assign(this, result.rows[0]);
     return this;
   }
 
@@ -339,6 +352,7 @@ class Agenda {
       attendance_status: this.attendance_status,
       nomor_surat: this.nomor_surat,
       surat_undangan: this.surat_undangan,
+      kirim_undangan: this.kirim_undangan || 0,
       created_by: this.created_by,
       updated_by: this.updated_by,
       created_at: this.created_at,
@@ -435,7 +449,7 @@ class Agenda {
     return result;
   }
 
-  // Add undangan to agenda
+  // Add undangan to agenda (for create - with transaction)
   static async addUndangan(agendaId, undanganList) {
     if (!undanganList || undanganList.length === 0) {
       return [];
@@ -448,6 +462,7 @@ class Agenda {
       const insertedUndangan = [];
       
       for (const undangan of undanganList) {
+        // For new undangan (create), use the provided data
         const { pegawai_id, nama, kategori, nip } = undangan;
         
         const insertQuery = `
@@ -470,18 +485,154 @@ class Agenda {
     }
   }
 
+  // Add undangan to agenda (for update - without transaction, called from within transaction)
+  static async addUndanganInTransaction(agendaId, undanganList, client) {
+    if (!undanganList || undanganList.length === 0) {
+      return [];
+    }
+
+    const insertedUndangan = [];
+    
+    // First, get all existing undangan data before deletion
+    const existingUndanganMap = new Map();
+    for (const undangan of undanganList) {
+      if (undangan.id) {
+        const selectQuery = `
+          SELECT pegawai_id, nama, kategori, nip 
+          FROM agenda_undangan 
+          WHERE id = $1
+        `;
+        const selectResult = await client.query(selectQuery, [undangan.id]);
+        
+        if (selectResult.rows.length > 0) {
+          existingUndanganMap.set(undangan.id, selectResult.rows[0]);
+        }
+      }
+    }
+    
+    for (const undangan of undanganList) {
+      // Handle both existing undangan (with id) and new undangan (without id)
+      if (undangan.id) {
+        // For existing undangan, use the data we fetched before deletion
+        const originalData = existingUndanganMap.get(undangan.id);
+        
+        if (!originalData) {
+          throw new Error(`Undangan with id ${undangan.id} not found`);
+        }
+        
+        const { pegawai_id, nama, kategori, nip } = {
+          pegawai_id: originalData.pegawai_id,
+          nama: undangan.nama || originalData.nama, // Use updated nama if provided
+          kategori: undangan.kategori || originalData.kategori, // Use updated kategori if provided
+          nip: originalData.nip
+        };
+        
+        const insertQuery = `
+          INSERT INTO agenda_undangan (agenda_id, pegawai_id, nama, kategori, nip)
+          VALUES ($1, $2, $3, $4, $5)
+          RETURNING *
+        `;
+        
+        const result = await client.query(insertQuery, [agendaId, pegawai_id, nama, kategori, nip]);
+        insertedUndangan.push(result.rows[0]);
+      } else {
+        // For new undangan, use the provided data
+        const { pegawai_id, nama, kategori, nip } = undangan;
+        
+        const insertQuery = `
+          INSERT INTO agenda_undangan (agenda_id, pegawai_id, nama, kategori, nip)
+          VALUES ($1, $2, $3, $4, $5)
+          RETURNING *
+        `;
+        
+        const result = await client.query(insertQuery, [agendaId, pegawai_id, nama, kategori, nip]);
+        insertedUndangan.push(result.rows[0]);
+      }
+    }
+    
+    return insertedUndangan;
+  }
+
+  // Add undangan to agenda (for update - using cached data)
+  static async addUndanganInTransactionWithCache(agendaId, undanganList, client, existingUndanganMap) {
+    if (!undanganList || undanganList.length === 0) {
+      return [];
+    }
+
+    const insertedUndangan = [];
+    
+    for (const undangan of undanganList) {
+      // Handle both existing undangan (with id) and new undangan (without id)
+      if (undangan.id) {
+        // For existing undangan, use the cached data
+        const originalData = existingUndanganMap.get(undangan.id);
+        
+        if (!originalData) {
+          throw new Error(`Undangan with id ${undangan.id} not found in cache`);
+        }
+        
+        const { pegawai_id, nama, kategori, nip } = {
+          pegawai_id: originalData.pegawai_id,
+          nama: undangan.nama || originalData.nama, // Use updated nama if provided
+          kategori: undangan.kategori || originalData.kategori, // Use updated kategori if provided
+          nip: originalData.nip
+        };
+        
+        const insertQuery = `
+          INSERT INTO agenda_undangan (agenda_id, pegawai_id, nama, kategori, nip)
+          VALUES ($1, $2, $3, $4, $5)
+          RETURNING *
+        `;
+        
+        const result = await client.query(insertQuery, [agendaId, pegawai_id, nama, kategori, nip]);
+        insertedUndangan.push(result.rows[0]);
+      } else {
+        // For new undangan, use the provided data
+        const { pegawai_id, nama, kategori, nip } = undangan;
+        
+        const insertQuery = `
+          INSERT INTO agenda_undangan (agenda_id, pegawai_id, nama, kategori, nip)
+          VALUES ($1, $2, $3, $4, $5)
+          RETURNING *
+        `;
+        
+        const result = await client.query(insertQuery, [agendaId, pegawai_id, nama, kategori, nip]);
+        insertedUndangan.push(result.rows[0]);
+      }
+    }
+    
+    return insertedUndangan;
+  }
+
   // Update undangan for agenda
   static async updateUndangan(agendaId, undanganList) {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
       
+      // First, get all existing undangan data BEFORE deletion
+      const existingUndanganMap = new Map();
+      for (const undangan of undanganList) {
+        if (undangan.id) {
+          const selectQuery = `
+            SELECT pegawai_id, nama, kategori, nip 
+            FROM agenda_undangan 
+            WHERE id = $1
+          `;
+          const selectResult = await client.query(selectQuery, [undangan.id]);
+          
+          if (selectResult.rows.length > 0) {
+            existingUndanganMap.set(undangan.id, selectResult.rows[0]);
+          }
+        }
+      }
+      
       // Delete existing undangan
       await client.query('DELETE FROM agenda_undangan WHERE agenda_id = $1', [agendaId]);
       
-      // Insert new undangan
+      // Insert new undangan using cached data
       if (undanganList && undanganList.length > 0) {
-        await Agenda.addUndangan(agendaId, undanganList);
+        await Agenda.addUndanganInTransactionWithCache(agendaId, undanganList, client, existingUndanganMap);
       }
       
       await client.query('COMMIT');

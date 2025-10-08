@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import SearchablePegawaiDropdown from "@/components/SearchablePegawaiDropdown";
 import { UserCheck, UserX, UserCog, AlertCircle, Save } from "lucide-react";
 import toast from "react-hot-toast";
 import { apiService } from "@/services/apiService";
@@ -285,37 +286,51 @@ export default function UpdateAgendaStatus({
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label htmlFor="attendanceStatus" className="text-sm font-medium">
-                  Pilih Status *
-                </Label>
-                <Select 
-                  value={formData.attendanceStatus} 
-                  onValueChange={(value) => handleInputChange("attendanceStatus", value)}
-                >
-                  <SelectTrigger className={errors.attendanceStatus ? "border-red-500" : ""}>
-                    <SelectValue placeholder="Pilih status kehadiran" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="attending">
-                      <div className="flex items-center gap-2">
-                        <UserCheck className="h-4 w-4 text-green-600" />
-                        <span>Menghadiri</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="not_attending">
-                      <div className="flex items-center gap-2">
-                        <UserX className="h-4 w-4 text-red-600" />
-                        <span>Tidak Menghadiri</span>
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="represented">
-                      <div className="flex items-center gap-2">
-                        <UserCog className="h-4 w-4 text-blue-600" />
-                        <span>Diwakilkan</span>
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                <label className="text-sm font-medium text-gray-700 mb-3 block">Status Kehadiran *</label>
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="attending"
+                      name="attendance"
+                      value="attending"
+                      checked={formData.attendanceStatus === 'attending'}
+                      onChange={(e) => handleInputChange("attendanceStatus", e.target.value)}
+                      className="text-green-600"
+                    />
+                    <label htmlFor="attending" className="text-sm font-medium text-green-700">
+                      Menghadiri
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="not_attending"
+                      name="attendance"
+                      value="not_attending"
+                      checked={formData.attendanceStatus === 'not_attending'}
+                      onChange={(e) => handleInputChange("attendanceStatus", e.target.value)}
+                      className="text-red-600"
+                    />
+                    <label htmlFor="not_attending" className="text-sm font-medium text-red-700">
+                      Tidak Menghadiri
+                    </label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="radio"
+                      id="represented"
+                      name="attendance"
+                      value="represented"
+                      checked={formData.attendanceStatus === 'represented'}
+                      onChange={(e) => handleInputChange("attendanceStatus", e.target.value)}
+                      className="text-blue-600"
+                    />
+                    <label htmlFor="represented" className="text-sm font-medium text-blue-700">
+                      Diwakilkan
+                    </label>
+                  </div>
+                </div>
                 {errors.attendanceStatus && (
                   <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
                     <AlertCircle className="h-3 w-3" />
@@ -352,16 +367,13 @@ export default function UpdateAgendaStatus({
               {/* Representative Field - Show when represented */}
               {formData.attendanceStatus === "represented" && (
                 <div>
-                  <Label htmlFor="representative" className="text-sm font-medium">
-                    Nama Perwakilan *
-                  </Label>
-                  <Input
-                    id="representative"
-                    type="text"
-                    placeholder="Masukkan nama perwakilan"
+                  <label className="text-sm font-medium text-gray-700 mb-2 block">
+                    Pilih Perwakilan *
+                  </label>
+                  <SearchablePegawaiDropdown
                     value={formData.representative}
-                    onChange={(e) => handleInputChange("representative", e.target.value)}
-                    className={errors.representative ? "border-red-500" : ""}
+                    onChange={(value) => handleInputChange("representative", value)}
+                    placeholder="Cari dan pilih pegawai yang akan mewakili"
                   />
                   {errors.representative && (
                     <p className="text-sm text-red-500 mt-1 flex items-center gap-1">
@@ -370,7 +382,7 @@ export default function UpdateAgendaStatus({
                     </p>
                   )}
                   <p className="text-xs text-gray-500 mt-1">
-                    Nama perwakilan akan ditambahkan ke daftar peserta agenda
+                    Pegawai yang dipilih akan ditambahkan ke daftar peserta agenda
                   </p>
                 </div>
               )}

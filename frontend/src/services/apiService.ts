@@ -4,14 +4,11 @@
  */
 
 import { httpClient } from './httpClient';
-import { getStoredToken, refreshAccessToken } from '@/lib/auth';
+import { tokenManager } from '@/lib/tokenManager';
 import { ApiResponse, RequestConfig } from '@/types/api';
 import { isDebugEnabled } from '@/config/env';
 
 class ApiService {
-  private isRefreshing = false;
-  private refreshPromise: Promise<boolean> | null = null;
-
   constructor() {
     this.setupInterceptors();
   }
@@ -22,9 +19,9 @@ class ApiService {
   private setupInterceptors(): void {
     // Request interceptor for authentication
     httpClient.addRequestInterceptor(async (config) => {
-      const token = getStoredToken();
+      const authHeader = tokenManager.getAuthHeader();
       
-      if (!token) {
+      if (!authHeader) {
         // No token, redirect to login
         if (typeof window !== 'undefined') {
           window.location.href = '/login';
@@ -36,7 +33,7 @@ class ApiService {
         ...config,
         headers: {
           ...config.headers,
-          'Authorization': `Bearer ${token}`,
+          'Authorization': authHeader,
         },
       };
     });
@@ -45,14 +42,14 @@ class ApiService {
     httpClient.addResponseInterceptor(async (response) => {
       if (response.status === 401) {
         // Token expired, try to refresh
-        const refreshSuccess = await this.handleTokenRefresh();
+        const refreshSuccess = await tokenManager.refresh();
         
         if (refreshSuccess) {
           // Retry the original request with new token
-          const newToken = getStoredToken();
-          if (newToken) {
+          const newAuthHeader = tokenManager.getAuthHeader();
+          if (newAuthHeader) {
             const newHeaders = new Headers(response.headers);
-            newHeaders.set('Authorization', `Bearer ${newToken}`);
+            newHeaders.set('Authorization', newAuthHeader);
             
             // Create new response with updated headers
             return new Response(response.body, {
@@ -82,39 +79,7 @@ class ApiService {
     });
   }
 
-  /**
-   * Handle token refresh with deduplication
-   */
-  private async handleTokenRefresh(): Promise<boolean> {
-    if (this.isRefreshing && this.refreshPromise) {
-      return this.refreshPromise;
-    }
-
-    this.isRefreshing = true;
-    this.refreshPromise = this.performTokenRefresh();
-
-    try {
-      const result = await this.refreshPromise;
-      return result;
-    } finally {
-      this.isRefreshing = false;
-      this.refreshPromise = null;
-    }
-  }
-
-  /**
-   * Perform actual token refresh
-   */
-  private async performTokenRefresh(): Promise<boolean> {
-    try {
-      return await refreshAccessToken();
-    } catch (error) {
-      if (isDebugEnabled) {
-        console.error('[API Service] Token refresh failed:', error);
-      }
-      return false;
-    }
-  }
+  // Removed duplicate token refresh logic - now handled by tokenManager
 
   /**
    * GET request
