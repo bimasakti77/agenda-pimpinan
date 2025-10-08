@@ -129,7 +129,7 @@ export default function LoginPage() {
           },
         }}
       />
-          <Card className="w-full max-w-md border-2 border-gray-200 animate-pulse" style={{ 
+          <Card className="w-full max-w-sm sm:max-w-md border-2 border-gray-200 animate-pulse" style={{ 
             boxShadow: '0 0 20px rgba(59, 130, 246, 0.5), 0 0 40px rgba(59, 130, 246, 0.3), 0 0 60px rgba(59, 130, 246, 0.1)',
             animation: 'shadowGlow 2s ease-in-out infinite alternate'
           }}>

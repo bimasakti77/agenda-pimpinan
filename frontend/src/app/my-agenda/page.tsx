@@ -10,7 +10,7 @@ import Sidebar from "@/components/Sidebar";
 import ProfileDropdown from "@/components/ProfileDropdown";
 import AddAgendaForm from "@/components/AddAgendaForm";
 import EditAgendaForm from "@/components/EditAgendaForm";
-import { FileText, Plus, Calendar, Clock, MapPin, Users, Eye, Edit, Trash2, Filter, Search, ChevronLeft, ChevronRight, TrendingUp, CheckCircle, Mail, UserCheck, AlertCircle } from "lucide-react";
+import { FileText, Plus, Calendar, Clock, MapPin, Users, Eye, Edit, Trash2, Filter, Search, ChevronLeft, ChevronRight, TrendingUp, CheckCircle, Mail, UserCheck, AlertCircle, Menu } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -50,6 +50,7 @@ interface Agenda {
 
 export default function MyAgendaPage() {
   const [agendas, setAgendas] = useState<Agenda[]>([]);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [upcomingAgendas, setUpcomingAgendas] = useState<Agenda[]>([]);
   const [pastAgendas, setPastAgendas] = useState<Agenda[]>([]);
   // Removed local user state - now using AuthContext
@@ -800,21 +801,33 @@ export default function MyAgendaPage() {
           onLogout={handleLogout}
           currentView={currentView}
           onViewChange={handleViewChange}
+          isMobileOpen={isMobileSidebarOpen}
+          onMobileToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
         />
-        <div className="flex-1 ml-64 flex flex-col">
+        <div className="flex-1 lg:ml-64 flex flex-col">
           {/* Top Header */}
           <header className="bg-white shadow-sm border-b">
-            <div className="px-6 py-4">
+            <div className="px-4 sm:px-6 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
+                  {/* Mobile Hamburger Menu */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsMobileSidebarOpen(true)}
+                    className="text-gray-600 hover:bg-gray-100 p-2 lg:hidden"
+                  >
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                  
                   <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-lg">
                     <FileText className="h-6 w-6 text-blue-600" />
                   </div>
                   <div>
-                    <h1 className="text-2xl font-bold text-gray-900">
+                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
                       Agenda dan Undangan
                     </h1>
-                    <p className="text-gray-600 mt-1">
+                    <p className="text-gray-600 mt-1 text-sm sm:text-base">
                       Kelola agenda yang telah Anda buat
                     </p>
                   </div>
@@ -831,7 +844,7 @@ export default function MyAgendaPage() {
           </header>
 
           {/* Main Content Area */}
-          <main className="flex-1 p-6">
+          <main className="flex-1 p-4 sm:p-6">
             <div className="space-y-6">
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
@@ -839,11 +852,11 @@ export default function MyAgendaPage() {
                 </div>
               )}
 
-              {/* Card Besar Atas - 60% tinggi untuk Undangan Saya dan Mini Calendar */}
-              <div className="h-[60vh]">
+              {/* Card Besar Atas - Responsive height untuk Undangan Saya dan Mini Calendar */}
+              <div className="h-[50vh] sm:h-[55vh] lg:h-[60vh]">
                 <Card className="h-full">
-                  <CardContent className="p-6 h-full overflow-y-auto">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+                  <CardContent className="p-4 sm:p-6 h-full overflow-y-auto">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 h-full">
                      {/* Card Kiri - Undangan Saya */}
                      <Card className="h-full">
                        <CardHeader className="pb-3">
@@ -1217,7 +1230,7 @@ export default function MyAgendaPage() {
               </div>
 
               {/* Card Besar Bawah - 40% tinggi dengan Tab dan Filters */}
-              <div className="h-[40vh]">
+              <div className="h-[45vh] sm:h-[40vh] lg:h-[40vh]">
                 <Card className="h-full">
                   <CardContent className="p-0 h-full flex flex-col">
                     {/* Header dengan Tab Navigation */}

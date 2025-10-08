@@ -379,7 +379,7 @@ export default function EditAgendaForm({ isOpen, onClose, onSuccess, agenda }: E
                 )}
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="start_time" className="text-sm font-medium">
                     Waktu Mulai *
