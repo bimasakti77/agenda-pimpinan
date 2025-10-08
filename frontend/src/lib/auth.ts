@@ -57,15 +57,7 @@ export const getStoredRefreshToken = (): string | null => {
   return localStorage.getItem("refreshToken");
 };
 
-export const isTokenExpired = (token: string): boolean => {
-  try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    const currentTime = Date.now() / 1000;
-    return payload.exp < currentTime;
-  } catch (error) {
-    return true; // If can't parse, consider expired
-  }
-};
+// Removed isTokenExpired - now handled by TokenManager
 
 export const refreshAccessToken = async (): Promise<boolean> => {
   try {
@@ -101,17 +93,4 @@ export const refreshAccessToken = async (): Promise<boolean> => {
   }
 };
 
-export const isAuthenticated = (): boolean => {
-  const token = getStoredToken();
-  const user = getStoredUser();
-  
-  if (!token || !user) return false;
-  
-  // Check if token is expired
-  if (isTokenExpired(token)) {
-    clearAuthData();
-    return false;
-  }
-  
-  return true;
-};
+// Removed isAuthenticated - now handled by AuthContext

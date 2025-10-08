@@ -27,6 +27,35 @@ class AgendaService {
     return result;
   }
 
+  // Get my agendas (agendas created by specific user)
+  async getMyAgendas(userId, options = {}) {
+    const { page = 1, limit = 50, search, status, priority } = options;
+    
+    const filters = {
+      created_by: userId
+    };
+    
+    if (search) {
+      filters.search = search;
+    }
+    
+    if (status) {
+      filters.status = status;
+    }
+    
+    if (priority) {
+      filters.priority = priority;
+    }
+    
+    const result = await Agenda.findAll(filters, page, limit);
+    
+    // Transform result to match expected format
+    return {
+      agendas: result.agenda, // Note: Agenda.findAll returns 'agenda', not 'agendas'
+      pagination: result.pagination
+    };
+  }
+
   // Update agenda
   async updateAgenda(id, updateData, userId) {
     const agenda = await Agenda.findById(id);

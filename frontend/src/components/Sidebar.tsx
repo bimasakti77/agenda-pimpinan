@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { Calendar, BarChart3, Users, LogOut, Menu, X } from "lucide-react";
+import { Calendar, BarChart3, Users, LogOut, Menu, X, Mail, FileText } from "lucide-react";
 import toast, { Toaster } from "react-hot-toast";
 
 interface SidebarProps {
@@ -15,9 +15,11 @@ interface SidebarProps {
   onLogout: () => void;
   currentView: string;
   onViewChange: (view: string) => void;
+  isMobileOpen?: boolean;
+  onMobileToggle?: () => void;
 }
 
-export default function Sidebar({ user, onLogout, currentView, onViewChange }: SidebarProps) {
+export default function Sidebar({ user, onLogout, currentView, onViewChange, isMobileOpen = false, onMobileToggle }: SidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const menuItems = [
@@ -26,6 +28,13 @@ export default function Sidebar({ user, onLogout, currentView, onViewChange }: S
       label: "Dashboard",
       icon: BarChart3,
       description: "Overview & Statistics",
+      roles: ["user", "admin", "superadmin"]
+    },
+    {
+      id: "my-agenda",
+      label: "Agenda dan Undangan",
+      icon: FileText,
+      description: "Agenda dan Undangan",
       roles: ["user", "admin", "superadmin"]
     },
     {
@@ -83,7 +92,20 @@ export default function Sidebar({ user, onLogout, currentView, onViewChange }: S
           },
         }}
       />
-      <div className={`bg-gray-900 text-white transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'} min-h-screen flex flex-col fixed left-0 top-0 z-40`}>
+      
+      {/* Mobile Overlay */}
+      {isMobileOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
+          onClick={() => onMobileToggle?.()}
+        />
+      )}
+      
+      <div className={`bg-gray-900 text-white transition-all duration-300 ${
+        isCollapsed ? 'w-16' : 'w-64'
+      } min-h-screen flex flex-col fixed left-0 top-0 z-40 ${
+        isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+      }`}>
       {/* Header */}
       <div className="p-4 border-b border-gray-700">
         <div className="flex items-center justify-between">
@@ -136,14 +158,27 @@ export default function Sidebar({ user, onLogout, currentView, onViewChange }: S
               />
             </div>
           )}
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="text-white hover:bg-gray-800"
-          >
-            {isCollapsed ? <Menu className="h-5 w-5" /> : <X className="h-5 w-5" />}
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* Mobile close button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onMobileToggle?.()}
+              className="text-white hover:bg-gray-700 p-2 lg:hidden"
+            >
+              <X className="h-4 w-4" />
+            </Button>
+            
+            {/* Desktop collapse button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsCollapsed(!isCollapsed)}
+              className="text-white hover:bg-gray-800 p-2 hidden lg:block"
+            >
+              {isCollapsed ? <Menu className="h-5 w-5" /> : <X className="h-5 w-5" />}
+            </Button>
+          </div>
         </div>
       </div>
 

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const agendaService = require('../services/agendaService');
+const agendaController = require('../controllers/agendaController');
 const { authenticate, authorize, canAccessResource } = require('../middleware/auth');
 const { validate, schemas } = require('../middleware/validation');
 const { uploadSingle, handleUploadError } = require('../middleware/upload');
@@ -171,6 +172,32 @@ router.get('/conflicts', authenticate, async (req, res, next) => {
       data: {
         hasConflicts: conflicts.length > 0,
         conflicts
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// @route   GET /api/agenda/my-agendas
+// @desc    Get my agendas (agendas created by current user)
+// @access  Private
+router.get('/my-agendas', authenticate, async (req, res, next) => {
+  try {
+    const { page = 1, limit = 50, search, status, priority } = req.query;
+    const result = await agendaService.getMyAgendas(req.user.id, {
+      page: parseInt(page),
+      limit: parseInt(limit),
+      search,
+      status,
+      priority
+    });
+    
+    res.json({
+      success: true,
+      data: {
+        agendas: result.agendas,
+        pagination: result.pagination
       }
     });
   } catch (error) {
@@ -427,5 +454,9 @@ router.get('/:id/download', authenticate, async (req, res, next) => {
     next(error);
   }
 });
+// @route   POST /api/agenda/:id/send-invitations
+// @desc    Send invitations for agenda
+// @access  Private
+router.post('/:id/send-invitations', authenticate, agendaController.sendInvitations);
 
 module.exports = router;

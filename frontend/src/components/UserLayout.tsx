@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getStoredUser, getStoredToken, type User } from "@/lib/auth";
-import { useTokenManager } from "@/hooks/useTokenManager";
+import { type User } from "@/lib/auth";
+import { useAuth } from "@/contexts/AuthContext";
 import Sidebar from "./Sidebar";
 import ProfileDropdown from "./ProfileDropdown";
 import toast, { Toaster } from "react-hot-toast";
@@ -15,21 +15,8 @@ interface UserLayoutProps {
 }
 
 export default function UserLayout({ children, title = "User Management", description = "Kelola pengguna sistem" }: UserLayoutProps) {
-  const [user, setUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState("users");
-  const { isAuthenticated, isLoading: tokenLoading } = useTokenManager();
-
-  useEffect(() => {
-    const token = getStoredToken();
-    const userData = getStoredUser();
-
-    if (!token || !userData) {
-      window.location.href = "/login";
-      return;
-    }
-
-    setUser(userData);
-  }, []);
+  const { user, logout } = useAuth();
 
   const handleLogout = () => {
     toast.success("Logout berhasil! Sampai jumpa!", {
@@ -41,10 +28,7 @@ export default function UserLayout({ children, title = "User Management", descri
     });
     
     setTimeout(() => {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("user");
-      window.location.href = "/login";
+      logout();
     }, 1000);
   };
 
@@ -56,6 +40,8 @@ export default function UserLayout({ children, title = "User Management", descri
       window.location.href = "/dashboard";
     } else if (view === "calendar") {
       window.location.href = "/calendar";
+    } else if (view === "invitations") {
+      window.location.href = "/invitations";
     } else if (view === "users") {
       // Only allow if user has superadmin role
       if (user.role === 'superadmin') {
@@ -75,18 +61,7 @@ export default function UserLayout({ children, title = "User Management", descri
     }
   };
 
-  if (tokenLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Memverifikasi autentikasi...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated || !user) {
+  if (!user) {
     return null;
   }
 

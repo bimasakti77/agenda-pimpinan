@@ -53,6 +53,8 @@ export const API_ENDPOINTS = {
     UPLOAD_FILE: (id: number) => `/agenda/${id}/upload`,
     DELETE_FILE: (id: number) => `/agenda/${id}/file`,
     DOWNLOAD_FILE: (id: number) => `/agenda/${id}/download`,
+    MY_AGENDAS: '/agenda/my-agendas',
+    SEND_INVITATIONS: (id: number) => `/agenda/${id}/send-invitations`,
   },
 
   // File upload endpoints
@@ -74,6 +76,13 @@ export const API_ENDPOINTS = {
     STATS: '/dashboard/stats',
     RECENT_AGENDA: '/dashboard/recent-agenda',
     UPCOMING_AGENDA: '/dashboard/upcoming-agenda',
+  },
+
+  // Undangan endpoints
+  UNDANGAN: {
+    MY_INVITATIONS: '/undangan/my-invitations',
+    UPDATE_STATUS: (id: number) => `/undangan/${id}/status`,
+    DELEGATE: (id: number) => `/undangan/${id}/delegate`,
   },
 } as const;
 

@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import toast, { Toaster } from "react-hot-toast";
 import { apiConfig } from "@/config/env";
+import { useAuth } from "@/contexts/AuthContext";
 
 export default function LoginPage() {
   const [formData, setFormData] = useState({
@@ -14,6 +15,14 @@ export default function LoginPage() {
     password: ""
   });
   const [isLoading, setIsLoading] = useState(false);
+  const { login, isAuthenticated } = useAuth();
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      window.location.href = "/dashboard";
+    }
+  }, [isAuthenticated]);
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,9 +52,14 @@ export default function LoginPage() {
         
         // Validate data before storing
         if (data.data && data.data.accessToken && data.data.refreshToken && data.data.user) {
-          localStorage.setItem("accessToken", data.data.accessToken);
-          localStorage.setItem("refreshToken", data.data.refreshToken);
-          localStorage.setItem("user", JSON.stringify(data.data.user));
+          // Use AuthContext login function
+          login(
+            {
+              accessToken: data.data.accessToken,
+              refreshToken: data.data.refreshToken,
+            },
+            data.data.user
+          );
           
           // Delay redirect untuk menampilkan notifikasi
           setTimeout(() => {
@@ -115,7 +129,7 @@ export default function LoginPage() {
           },
         }}
       />
-          <Card className="w-full max-w-md border-2 border-gray-200 animate-pulse" style={{ 
+          <Card className="w-full max-w-sm sm:max-w-md border-2 border-gray-200 animate-pulse" style={{ 
             boxShadow: '0 0 20px rgba(59, 130, 246, 0.5), 0 0 40px rgba(59, 130, 246, 0.3), 0 0 60px rgba(59, 130, 246, 0.1)',
             animation: 'shadowGlow 2s ease-in-out infinite alternate'
           }}>

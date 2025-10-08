@@ -1,17 +1,18 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import toast, { Toaster } from "react-hot-toast";
-import { getStoredUser, type User } from "@/lib/auth";
-import { useTokenManager } from "@/hooks/useTokenManager";
+import { type User } from "@/lib/auth";
+import { useAuth } from "@/contexts/AuthContext";
+import { ProtectedPage } from "@/components/ProtectedPage";
 import Sidebar from "@/components/Sidebar";
 import StatsCards from "@/components/StatsCards";
 import AgendaChart from "@/components/AgendaChart";
 import ProfileDropdown from "@/components/ProfileDropdown";
-import { BarChart3 } from "lucide-react";
+import { BarChart3, Menu } from "lucide-react";
 import { apiService } from "@/services/apiService";
 import { API_ENDPOINTS, buildEndpoint } from "@/services/apiEndpoints";
 
@@ -44,8 +45,8 @@ interface ChartData {
 }
 
 export default function DashboardPage() {
-  const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [currentView, setCurrentView] = useState("dashboard");
   const [stats, setStats] = useState<StatsData>({
     totalAgendas: 0,
@@ -58,26 +59,10 @@ export default function DashboardPage() {
   const [showAgendaModal, setShowAgendaModal] = useState(false);
   const [selectedAgenda, setSelectedAgenda] = useState<Agenda | null>(null);
 
-  const { isAuthenticated, isLoading: tokenLoading } = useTokenManager();
+  const { user, logout } = useAuth();
 
-  useEffect(() => {
-    const userData = getStoredUser();
-
-    if (!userData) {
-      window.location.href = "/login";
-      return;
-    }
-
-    setUser(userData);
-    setIsLoading(false);
-    
-    // Load all data with userData directly
-    loadDashboardStatsWithUser(userData);
-    loadChartData();
-    loadRecentAgendas();
-  }, []);
-
-  const loadDashboardStatsWithUser = async (userData: User) => {
+  // Define all functions first
+  const loadDashboardStatsWithUser = useCallback(async (userData: User) => {
     try {
       const data = await apiService.get('/agenda/stats/dashboard');
       const statsData = data || {
@@ -96,24 +81,30 @@ export default function DashboardPage() {
         pendingAgendas: 0
       });
     }
-  };
+  }, []);
 
-  const loadDashboardStats = async () => {
-    if (!user) return;
-    return loadDashboardStatsWithUser(user);
-  };
-
-  const loadChartData = async () => {
+  const loadChartData = useCallback(async () => {
     try {
-      const data = await apiService.get('/agenda/stats/monthly');
-      setChartData(data || []);
+      const response = await apiService.get('/agenda/stats/monthly');
+      
+      // Handle different response structures
+      let chartData = [];
+      if (response && response.data) {
+        chartData = response.data;
+      } else if (Array.isArray(response)) {
+        chartData = response;
+      } else {
+        chartData = response || [];
+      }
+      
+      setChartData(chartData);
     } catch (err: any) {
       console.error("Error loading chart data:", err);
       setChartData([]);
     }
-  };
+  }, []);
 
-  const loadRecentAgendas = async () => {
+  const loadRecentAgendas = useCallback(async () => {
     const endpoint = buildEndpoint('/agenda', {
       limit: 5,
       sort: 'created_at',
@@ -142,7 +133,33 @@ export default function DashboardPage() {
       console.error("Error loading recent agendas:", err);
       setRecentAgendas([]);
     }
-  };
+  }, []);
+
+  const loadDashboardStats = useCallback(async () => {
+    if (!user) return;
+    return loadDashboardStatsWithUser(user);
+  }, [user, loadDashboardStatsWithUser]);
+
+  // Function untuk refresh data setelah save/update
+  const refreshDashboardData = useCallback(() => {
+    if (user) {
+      loadDashboardStatsWithUser(user);
+      loadChartData();
+      loadRecentAgendas();
+    }
+  }, [user, loadDashboardStatsWithUser, loadChartData, loadRecentAgendas]);
+
+  // Initial load - hanya sekali saat user login
+  useEffect(() => {
+    if (user) {
+      setIsLoading(false);
+      
+      // Load all data with user directly
+      loadDashboardStatsWithUser(user);
+      loadChartData();
+      loadRecentAgendas();
+    }
+  }, [user]); // Remove function dependencies to prevent infinite loop
 
   const memoizedChartData = useMemo(() => {
     if (!chartData || !Array.isArray(chartData)) {
@@ -169,10 +186,7 @@ export default function DashboardPage() {
       },
     });
     setTimeout(() => {
-      localStorage.removeItem("accessToken");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("user");
-      window.location.href = "/login";
+      logout();
     }, 1000);
   };
 
@@ -183,6 +197,10 @@ export default function DashboardPage() {
       window.location.href = "/users";
     } else if (view === "calendar") {
       window.location.href = "/calendar";
+    } else if (view === "invitations") {
+      window.location.href = "/invitations";
+    } else if (view === "my-agenda") {
+      window.location.href = "/my-agenda";
     } else if (view === "dashboard") {
       // Stay in dashboard
       setCurrentView("dashboard");
@@ -228,44 +246,42 @@ export default function DashboardPage() {
   };
 
 
-  if (tokenLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Memuat aplikasi...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return null;
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
+    <ProtectedPage title="Dashboard Overview">
+      <div className="min-h-screen bg-gray-50">
       <div className="flex">
         <Sidebar
           user={user}
           onLogout={handleLogout}
           currentView={currentView}
           onViewChange={handleViewChange}
+          isMobileOpen={isMobileSidebarOpen}
+          onMobileToggle={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
         />
-        <div className="flex-1 ml-64 flex flex-col">
+        <div className="flex-1 lg:ml-64 flex flex-col">
           {/* Top Header */}
           <header className="bg-white shadow-sm border-b">
-            <div className="px-6 py-4">
+            <div className="px-4 sm:px-6 py-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-4">
+                  {/* Mobile Hamburger Menu */}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsMobileSidebarOpen(true)}
+                    className="text-gray-600 hover:bg-gray-100 p-2 lg:hidden"
+                  >
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                  
                   <div className="flex items-center justify-center w-10 h-10 bg-blue-100 rounded-lg">
                     <BarChart3 className="h-6 w-6 text-blue-600" />
                   </div>
                   <div>
-                    <h1 className="text-2xl font-bold text-gray-900">
+                    <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
                       Dashboard Overview
                     </h1>
-                    <p className="text-gray-600 mt-1">
+                    <p className="text-gray-600 mt-1 text-sm sm:text-base">
                       Ringkasan statistik dan grafik agenda
                     </p>
                   </div>
@@ -284,7 +300,7 @@ export default function DashboardPage() {
           </header>
 
           {/* Main Content Area */}
-          <main className="flex-1 p-6">
+          <main className="flex-1 p-4 sm:p-6">
             {isLoading ? (
               <div className="flex items-center justify-center h-64">
                 <div className="text-center">
@@ -400,6 +416,7 @@ export default function DashboardPage() {
       </Dialog>
 
       <Toaster position="top-right" />
-    </div>
+      </div>
+    </ProtectedPage>
   );
 }
