@@ -83,13 +83,12 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isFileLoading, setIsFileLoading] = useState(false);
 
-
   // Convert agendas to calendar events
   const events: CalendarEvent[] = useMemo(() => {
     // Filter agendas based on current view and date
     let filteredAgendas = agendas;
     
-    if (currentView === Views.DAY) {
+    if ((currentView as any) === Views.DAY) {
       // For day view, only show agendas for the selected date
       const selectedDate = moment(currentDate).format('YYYY-MM-DD');
       filteredAgendas = agendas.filter(agenda => {
@@ -103,7 +102,7 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
         const matches = agendaDateStr === selectedDate;
         return matches;
       });
-    } else if (currentView === Views.WEEK) {
+    } else if ((currentView as any) === Views.WEEK) {
       // For week view, show agendas for the current week
       const weekStart = moment(currentDate).startOf('week');
       const weekEnd = moment(currentDate).endOf('week');
@@ -262,6 +261,7 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
       
       console.log("🔍 Debug - Download - Download response:", response);
       
+      // Backend returns: { success: true, downloadUrl, fileName, ... }
       if (response.success && response.downloadUrl) {
         console.log("🔍 Debug - Download - Download URL:", response.downloadUrl);
         // Create download link
@@ -276,7 +276,15 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
         toast.success("File berhasil didownload");
       } else {
         console.error("🔍 Debug - Download - Invalid response:", response);
-        toast.error("Gagal mendapatkan link download");
+        
+        // More specific error messages
+        if (!response.success) {
+          toast.error("Server error: " + (response.message || "Unknown error"));
+        } else if (!response.downloadUrl) {
+          toast.error("URL download tidak ditemukan");
+        } else {
+          toast.error("Gagal mendapatkan link download");
+        }
       }
     } catch (error: any) {
       console.error("🔍 Debug - Download - Error downloading file:", error);
@@ -291,39 +299,44 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
     }
   };
 
-  // Handle view file (open in new tab)
+  // Handle view file - blob approach, open in new tab
   const handleViewFile = async () => {
     if (!selectedEvent?.file_path) {
       toast.error("Tidak ada file surat undangan");
       return;
     }
 
-    console.log("🔍 Debug - Selected Event:", {
-      id: selectedEvent.id,
-      file_name: selectedEvent.file_name,
-      file_path: selectedEvent.file_path,
-      file_bucket: selectedEvent.file_bucket
-    });
-
     setIsFileLoading(true);
     try {
-
-     const response = await apiService.get(API_ENDPOINTS.AGENDA.DOWNLOAD_FILE(selectedEvent.id));
+      console.log("🔍 Debug - View File - Requesting download URL for agenda ID:", selectedEvent.id);
+      const response = await apiService.get(API_ENDPOINTS.AGENDA.DOWNLOAD_FILE(selectedEvent.id));
       
-     if (response.success && response.downloadUrl) {
-       
-        window.open(response.downloadUrl, '_blank');
-        toast.success("File dibuka di tab baru");
+      if (response.success && response.downloadUrl) {
+        console.log("🔍 Debug - View File - Download URL:", response.downloadUrl);
+        
+        // Fetch file as blob
+        const blobResponse = await fetch(response.downloadUrl);
+        if (!blobResponse.ok) {
+          throw new Error(`HTTP error! status: ${blobResponse.status}`);
+        }
+        
+        const blob = await blobResponse.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        
+        // Open PDF in new tab using blob URL
+        window.open(objectUrl, '_blank');
+        toast.success("PDF dibuka di tab baru");
+        
+        // Clean up object URL after a delay to allow tab to open
+        setTimeout(() => {
+          URL.revokeObjectURL(objectUrl);
+        }, 1000);
+        
       } else {
-        toast.error("Gagal membuka file - Response tidak valid");
+        toast.error("Gagal mendapatkan URL download");
       }
     } catch (error: any) {
-      console.error("🔍 Debug - Error viewing file:", error);
-      console.error("🔍 Debug - Error details:", {
-        message: error.message,
-        status: error.status,
-        response: error.response
-      });
+      console.error("🔍 Debug - View File - Error:", error);
       toast.error(error.message || "Gagal membuka file");
     } finally {
       setIsFileLoading(false);
@@ -799,7 +812,7 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
                                   </p>
                                 </div>
                               </div>
-                              <div className="flex gap-2">
+                              <div className="flex gap-2 flex-wrap">
                                 <Button
                                   size="sm"
                                   variant="outline"
@@ -1059,6 +1072,7 @@ export default function CalendarView({ agendas, isLoading, selectedUserName, use
           </div>
         </DialogContent>
       </Dialog>
+
     </div>
   );
 }
